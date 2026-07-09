@@ -1,0 +1,108 @@
+/* Start Header Styles */
+.header {
+  @apply transition-all relative top-0 inset-x-0 flex flex-wrap sm:justify-start sm:flex-nowrap z-[48] w-full bg-white border-b text-sm sm:py-4 lg:ps-64 dark:bg-bgdark dark:border-white/10 py-4;
+  &.sticky-pin {
+    @apply sticky transition-all;
+  }
+  .responsive-logo {
+    @apply lg:hidden;
+
+    .responsive-logo-dark {
+      @apply block dark:hidden;
+    }
+
+    .responsive-logo-light {
+      @apply hidden dark:block;
+    }
+  }
+
+  .main-header {
+    @apply flex basis-full items-center w-full mx-auto px-4 sm:px-6;
+  }
+
+  .header-content {
+    @apply w-full flex items-center ms-auto gap-x-3 order-3;
+  }
+
+  .header-left {
+    @apply flex;
+  }
+
+  .header-right {
+    @apply ms-auto;
+
+    .header-nav-right {
+      @apply flex flex-row gap-3 items-center lg:justify-end;
+    }
+  }
+}
+
+.header-icon {
+  @apply text-lg text-headerprime;
+}
+
+.search-btn {
+  @apply absolute -top-[3px] bottom-0 start-0 flex items-center cursor-pointer z-20 ps-4;
+
+  .search-btn-icon {
+    @apply h-4 w-4 text-gray-400;
+  }
+}
+
+.voice-search {
+  @apply absolute inset-y-0 end-0 flex items-center cursor-pointer z-20 pe-4 me-5;
+
+  .voice-btn-icon {
+    @apply h-4 w-4 text-gray-400;
+  }
+}
+
+.search-dropdown {
+  @apply absolute inset-y-0 end-0 flex items-center cursor-pointer z-20 pe-4;
+
+  .search-dropdown-btn-icon {
+    @apply h-4 w-4 text-gray-400;
+  }
+}
+[data-toggled="icon-overlay-close"] {
+  .header {
+    .sidebar-toggle {
+      @apply rotate-180;
+    }
+  }
+}
+[data-toggled="icon-overlay-close"] {
+  .header {
+    @apply lg:ps-24;
+  }
+}
+
+.header-link {
+  @apply absolute h-full w-full z-10 inset-x-0 top-0;
+}
+.header-cart,
+.header-notification,
+.header-apps {
+  .ti-dropdown-divider {
+    @apply py-0;
+  }
+  .ti-dropdown-menu {
+    @apply p-0 shadow-lg border border-gray-200 dark:border-white/20;
+  }
+  .ti-dropdown-header {
+    @apply m-0;
+  }
+}
+.header-notification {
+  .header-remove-btn {
+    @apply hidden;
+  }
+  .header-box {
+    &:hover {
+      .header-remove-btn {
+        @apply flex;
+      }
+    }
+  }
+}
+/*End  Header Styles */

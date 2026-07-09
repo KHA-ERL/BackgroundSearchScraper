@@ -1,0 +1,97 @@
+/* Start:: Dashboard-7 Styles */
+.shape-1,
+.shape-2,
+.shape-3,
+.shape-4,
+.shape-5,
+.shape-6,
+.shape-7,
+.shape-8,
+.shape-9,
+.shape-10,
+.shape-11,
+.shape-12,
+.shape-13 {
+  @apply absolute;
+  i {
+    @apply opacity-25;
+  }
+}
+
+.shape-1 {
+  @apply start-[20%]  top-[20%];
+}
+.shape-2 {
+  @apply start-[5%] top-[42%];
+}
+
+.shape-3 {
+  @apply end-[15%] bottom-[55%];
+}
+
+.shape-4 {
+  @apply start-[55%] top-[25%];
+}
+
+.shape-5 {
+  @apply start-[50%] bottom-[25%];
+}
+
+.shape-6 {
+  @apply end-[10%] bottom-[10%];
+}
+
+.shape-7 {
+  @apply start-[20%] bottom-[17%];
+}
+
+.shape-8 {
+  @apply end-[20%] bottom-[17%];
+}
+
+.shape-9 {
+  @apply end-[25%] top-[10%];
+}
+
+.shape-10 {
+  @apply end-[5%] top-[15%];
+}
+
+.shape-11 {
+  @apply start-[15%] bottom-[35%];
+}
+
+.shape-12 {
+  @apply start-[25%] top-[40%];
+}
+
+.shape-13 {
+  @apply start-[10%] bottom-[10%];
+}
+
+.shape-14 {
+  @apply -end-[10%] -bottom-[10%];
+}
+
+.shape-15 {
+  @apply -start-[20%] -bottom-[17%];
+}
+
+.shape-16 {
+  @apply -end-[20%] -bottom-[17%];
+}
+
+#projectAnalysis {
+  .apexcharts-grid-borders {
+    .apexcharts-gridline {
+      @apply stroke-transparent;
+    }
+    line {
+      &:not(.apexcharts-gridline) {
+        @apply dark:stroke-white/10;
+      }
+    }
+  }
+}
+
+/* End:: Dashboard-7 Styles */

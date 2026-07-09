@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BubbleScraper - Documentation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      href="https://cdn.jsdelivr.net/npm/remixicon@4.0.0/fonts/remixicon.css"
+      rel="stylesheet"
+    />
+    <style>
+      html {
+        scroll-behavior: smooth !important;
+      }
+    </style>
+  </head>
+  <body class="bg-white text-gray-800">
+    <!-- Header (Mobile Toggle) -->
+    <header
+      class="md:hidden flex items-center justify-between bg-slate-900 text-white p-4 sticky top-0 z-50"
+    >
+      <div class="text-lg font-bold">BubbleScraper Docs</div>
+      <button id="mobileMenuBtn">
+        <i class="ri-menu-line text-2xl"></i>
+      </button>
+    </header>
+
+    <div class="flex h-screen">
+      <!-- Sidebar -->
+      <aside
+        id="sidebar"
+        class="w-64 bg-slate-900 text-white space-y-4 p-6 fixed inset-y-0 left-0 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out z-50 md:relative md:block"
+      >
+        <div class="text-xs font-bold tracking-widest text-gray-400 mb-4">
+          MAIN
+        </div>
+        <nav class="space-y-4">
+          <a href="#home" class="flex items-center gap-2 hover:text-sky-300">
+            <i class="ri-home-line text-xl"></i> <span>Home</span>
+          </a>
+          <a
+            href="#gettingstart"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-time-line text-xl"></i> <span>Getting Started</span>
+          </a>
+          <!-- Setup with dropdown -->
+          <div>
+            <button
+              onclick="toggleDropdown()"
+              class="w-full flex items-center justify-between hover:text-sky-300"
+            >
+              <span class="flex items-center gap-2">
+                <i class="ri-settings-3-line text-xl"></i>
+                <span>Setup</span>
+              </span>
+              <i class="ri-arrow-down-s-line text-sm"></i>
+            </button>
+            <div id="setupDropdown" class="ml-6 mt-2 space-y-3 hidden">
+              <a
+                href="#install"
+                class="block text-sm hover:text-sky-300"
+                onclick="toggleDropdown()"
+                >&#9675; Install</a
+              >
+              <a
+                href="#build"
+                class="block text-sm hover:text-sky-300"
+                onclick="toggleDropdown()"
+                >&#9675; Build &amp; Start</a
+              >
+              <a
+                href="#config"
+                class="block text-sm hover:text-sky-300"
+                onclick="toggleDropdown()"
+                >&#9675; Configuration</a
+              >
+              <a
+                href="#production"
+                class="block text-sm hover:text-sky-300"
+                onclick="toggleDropdown()"
+                >&#9675; Production (PM2)</a
+              >
+            </div>
+          </div>
+          <a href="#ai-agent" class="flex items-center gap-2 text-green-400 hover:text-green-300 font-bold">
+            <i class="ri-terminal-box-line text-xl"></i> <span>AI Agent</span>
+          </a>
+          <a
+            href="#features"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-sparkling-line text-xl"></i> <span>Features</span>
+          </a>
+          <a
+            href="#services"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-apps-2-line text-xl"></i> <span>Tools</span>
+          </a>
+          <a
+            href="#wordpress"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-wordpress-line text-xl"></i> <span>WordPress</span>
+          </a>
+          <a
+            href="#faq"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-question-line text-xl"></i> <span>FAQ</span>
+          </a>
+          <a href="#logs" class="flex items-center gap-2 hover:text-sky-300">
+            <i class="ri-loop-left-line text-xl"></i> <span>Change Logs</span>
+          </a>
+          <a
+            href="#thanks"
+            class="flex items-center gap-2 hover:text-sky-300"
+          >
+            <i class="ri-user-smile-line text-xl"></i> <span>Thank you :)</span>
+          </a>
+        </nav>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="flex-1 px-4 overflow-y-auto">
+        <div class="max-w-6xl mx-auto pt-10" id="home">
+          <h1 class="text-4xl font-bold text-center hidden md:block">
+            BubbleScraper Documentation
+          </h1>
+          <p class="text-center text-gray-500 mt-2 text-lg">
+            A self-hosted web scraping platform powered by a conversational <strong>Agentic AI Terminal</strong> interacting with <strong>33 tools</strong>: lead generation, WhatsApp, verification, eCommerce, social media, and more.
+          </p>
+
+          <!-- Getting Started -->
+          <section class="mt-12 pt-10" id="gettingstart">
+            <h2
+              class="text-sm font-semibold uppercase tracking-widest text-pink-600"
+            >
+              Welcome
+            </h2>
+            <h3 class="text-2xl font-bold mt-2">Getting Started</h3>
+            <p class="mt-4 text-gray-600">
+              Thank you for purchasing BubbleScraper! Setup takes just a few minutes.
+              Install dependencies, build, start — and you're scraping.
+            </p>
+
+            <div class="mt-6 bg-sky-50 border border-sky-200 rounded-lg p-6">
+              <h4 class="font-bold text-sky-800 mb-3">Quick Setup (3 Steps)</h4>
+              <ol class="list-decimal list-inside text-gray-700 space-y-2">
+                <li><b>Install</b> dependencies with npm</li>
+                <li><b>Build</b> the application</li>
+                <li><b>Start</b> the server and open it in your browser</li>
+              </ol>
+              <p class="text-sm text-gray-500 mt-3">
+                Detailed instructions below. The whole process takes about 5 minutes.
+              </p>
+            </div>
+          </section>
+
+          <!-- Install -->
+          <section class="mt-12 pt-10" id="install">
+            <h2 class="text-2xl font-bold mb-4">Step 1: Install Dependencies</h2>
+
+            <div class="bg-green-50 border border-green-200 rounded-lg p-5 mb-6">
+              <p class="text-green-800 font-semibold mb-1">Requirements</p>
+              <ul class="list-disc list-inside text-green-700 text-sm space-y-1">
+                <li>Node.js 18 or higher. Check with <code class="text-red-600 font-mono">node -v</code></li>
+                <li>npm 9 or higher. Check with <code class="text-red-600 font-mono">npm -v</code></li>
+              </ul>
+              <p class="text-green-600 text-xs mt-2">No separate browser install needed. Playwright downloads its own Chromium.</p>
+            </div>
+
+            <p class="text-gray-700 mb-3">Open a terminal in the project folder and run:</p>
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p>npm install</p>
+              <p>npx playwright install chromium</p>
+            </div>
+          </section>
+
+          <!-- Build & Start -->
+          <section class="mt-12 pt-10" id="build">
+            <h2 class="text-2xl font-bold mb-4">Step 2: Build &amp; Start</h2>
+
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p>npm run build</p>
+              <p>npm start</p>
+            </div>
+
+            <p class="text-gray-700 mb-4">
+              Open <code class="text-red-600 font-mono">http://localhost:3000</code> in your browser. That's it. You're ready to scrape.
+            </p>
+
+            <p class="text-center text-2xl font-bold my-8">
+              Setup complete! Start scraping.
+            </p>
+          </section>
+
+          <!-- Configuration -->
+          <section class="mt-12 pt-10" id="config">
+            <h2 class="text-2xl font-bold mb-4">Configuration (Optional)</h2>
+
+            <p class="text-gray-700 mb-4">
+              BubbleScraper works out of the box with zero configuration. For advanced options,
+              copy the example config file:
+            </p>
+
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p><span class="text-gray-400"># Mac / Linux</span></p>
+              <p>cp .env.local.example .env.local</p>
+              <p>&nbsp;</p>
+              <p><span class="text-gray-400"># Windows</span></p>
+              <p>copy .env.local.example .env.local</p>
+            </div>
+
+            <p class="text-gray-700 mb-4">
+              You can also configure everything from inside the app at
+              <b>Dashboard &rarr; Profile &rarr; Settings</b>.
+            </p>
+
+            <table class="w-full text-sm border border-gray-200 rounded mb-6">
+              <thead class="bg-gray-50">
+                <tr>
+                  <th class="text-left p-3 border-b">Setting</th>
+                  <th class="text-left p-3 border-b">What it does</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td class="p-3 border-b font-mono text-xs">MISTRAL_API_KEY</td><td class="p-3 border-b">Powers the Agentic AI Terminal. Required to process natural language chat instructions and autonomously route them to the correct scraper tools.</td></tr>
+                <tr><td class="p-3 border-b font-mono text-xs">DNS_MODE</td><td class="p-3 border-b">Use OS/VPN DNS (default: <code>vpn</code>) or encrypted DNS-over-HTTPS (<code>doh</code>)</td></tr>
+                <tr><td class="p-3 border-b font-mono text-xs">BRIGHT_DATA_ENABLED</td><td class="p-3 border-b">Route scrapers through Bright Data residential proxies (bypasses bot blocks)</td></tr>
+                <tr><td class="p-3 border-b font-mono text-xs">LISTCLEAN_API_KEY</td><td class="p-3 border-b">Full SMTP email verification. Without it, free DNS check is used.</td></tr>
+                <tr><td class="p-3 font-mono text-xs">WEBHOOK_URL</td><td class="p-3">Auto-POST results to Zapier / Make / n8n after every scraper run</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <!-- Production (PM2) -->
+          <section class="mt-12 pt-10" id="production">
+            <h2 class="text-2xl font-bold mb-4">Keep It Running (Production)</h2>
+
+            <p class="text-gray-700 mb-4">
+              Use PM2 so the app survives terminal closes and server reboots:
+            </p>
+
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p>npm install -g pm2</p>
+              <p>pm2 start npm --name "bubblescraper" -- start</p>
+              <p>pm2 save && pm2 startup</p>
+            </div>
+
+            <p class="text-gray-700 mb-3">To restart after changes:</p>
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p>pm2 restart bubblescraper</p>
+            </div>
+
+            <p class="text-gray-700 mb-3">To view logs:</p>
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-6 text-sm space-y-1">
+              <p>pm2 logs bubblescraper</p>
+            </div>
+          </section>
+
+          <!-- Features Section -->
+          <section class="mt-12 pt-10" id="features">
+            <h2 class="text-2xl font-bold mb-4">Features</h2>
+            <ul class="list-disc list-inside text-gray-700 space-y-1">
+              <li><strong>Conversational Agentic AI:</strong> Chat with a hacker-style AI that routes requests to 33 tools automatically</li>
+              <li>33 scraping &amp; lead generation tools in one dashboard</li>
+              <li>Self-hosted. Runs on your own server, your data stays with you</li>
+              <li>CSV and JSON data export</li>
+              <li>Command palette (<code class="font-mono text-xs">Cmd+K</code> / <code class="font-mono text-xs">Ctrl+K</code>) for quick tool access</li>
+              <li>Run history saved locally in your browser</li>
+              <li>Dark mode support</li>
+              <li>Webhook automation (Zapier, Make, n8n)</li>
+              <li>Optional Bright Data proxy integration for bypassing bot detection</li>
+              <li>Stealth mode with browser fingerprint protection</li>
+              <li>Scrape emails, phone numbers, social media profiles, business listings, and more</li>
+              <li>No per-query fees or usage limits</li>
+              <li>No external dependencies. Everything runs locally</li>
+            </ul>
+          </section>
+
+          <!-- Agentic AI Section -->
+          <section class="mt-12 pt-10" id="ai-agent">
+            <div class="bg-gray-900 border border-green-500/30 rounded-lg p-8 shadow-xl text-white">
+              <h2 class="text-3xl font-bold mb-4 flex items-center gap-3">
+                <i class="ri-terminal-box-fill text-green-400"></i> Agentic AI Terminal
+              </h2>
+              <p class="text-gray-300 mb-6 text-lg">
+                BubbleScraper features a state-of-the-art conversational AI agent designed with a retro-futuristic hacker aesthetic. Simply talk to the AI to execute tasks!
+              </p>
+              
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 class="font-bold text-green-400 mb-2 text-xl">Natural Language Routing</h3>
+                  <p class="text-sm text-gray-400 mb-5">Just ask! The AI understands your objectives and autonomously routes your instruction to the right scraping tool among our 33 specialized scrapers.</p>
+                  
+                  <h3 class="font-bold text-green-400 mb-2 text-xl">Interactive Clarifications</h3>
+                  <p class="text-sm text-gray-400">If your request is ambiguous, the agent will dynamically interact with you to clarify parameters (e.g. asking for specific domains or locations) before execution.</p>
+                </div>
+                <div class="bg-black p-5 rounded border border-gray-700 font-mono text-sm shadow-inner">
+                  <p class="text-gray-500">root@bubblescraper:~#</p>
+                  <p class="text-white mt-2">> "Find me leads for plumbers in New York"</p>
+                  <p class="mt-3 text-blue-400">[System] Processing natural language request...</p>
+                  <p class="text-yellow-400">[Agent] Routing to Google Maps Scraper.</p>
+                  <p class="text-green-400 font-bold mt-1">[Success] Displaying 150 results inline...</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Services & Tools Section -->
+          <section class="mt-12 pt-10" id="services">
+            <h2 class="text-2xl font-bold mb-2">Tools</h2>
+            <p class="text-gray-600 mb-6">
+              All 33 scraping and lead generation tools included.
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/bing.png" alt="Bing" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Bing Search Scraper</h3>
+                <p class="text-sm text-gray-600">Collect Bing search data: URLs, titles, and contacts.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/yahoo.png" alt="Yahoo" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Yahoo Search Scraper</h3>
+                <p class="text-sm text-gray-600">Filter results from Yahoo search and get important data.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/duckduckgo.png" alt="DuckDuckGo" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">DuckDuckGo Scraper</h3>
+                <p class="text-sm text-gray-600">Get search results from DuckDuckGo including websites and contacts.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/google.png" alt="Google" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Google Search Scraper</h3>
+                <p class="text-sm text-gray-600">Extract search results from Google including titles, URLs, and descriptions.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/gmapIcon.png" alt="Google Maps" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Google Map Scraper</h3>
+                <p class="text-sm text-gray-600">Scrape business details from Google Maps including name, phone, and address.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/live.png" alt="Live Scraping" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Live Website Scraping</h3>
+                <p class="text-sm text-gray-600">Get contact information, social media links, and more from live websites.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/websiteIcon.png" alt="Live Data" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Live Website Data</h3>
+                <p class="text-sm text-gray-600">Instant business leads and faster engagement from live website data.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/facebook.png" alt="Facebook" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Facebook Scraper</h3>
+                <p class="text-sm text-gray-600">Get followers, phone, email and more public data from Facebook.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/youtube.png" alt="YouTube" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">YouTube Scraper</h3>
+                <p class="text-sm text-gray-600">Get subscribers, viewers, and other important data of YouTubers.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/website.png" alt="Website Data" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Website Data Scraper</h3>
+                <p class="text-sm text-gray-600">Extract valuable data from websites for research and marketing.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/directoryIcon.png" alt="Business Directory" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Business Directory Scraper</h3>
+                <p class="text-sm text-gray-600">Extract contact details from online business directories.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/docIcon.png" alt="Document Scraper" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Document Data Scraper</h3>
+                <p class="text-sm text-gray-600">Extract data from CSV, Excel, Doc, and other documents.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/imageIcon.png" alt="Image Scraper" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Image Data Scraper</h3>
+                <p class="text-sm text-gray-600">Extract text and contact information from images with OCR technology.</p>
+              </div>
+              <div class="bg-blue-50 p-6 rounded-lg shadow hover:shadow-md text-center">
+                <img src="public/img/domain.png" alt="Whois" class="w-12 h-12 mx-auto mb-3" />
+                <h3 class="font-semibold text-lg mb-1">Whois Domain Database</h3>
+                <p class="text-sm text-gray-600">Retrieve domain ownership details like name, address, and country.</p>
+              </div>
+            </div>
+
+            <div class="mt-8">
+              <h3 class="text-lg font-semibold mb-3">Full Tool List by Category</h3>
+              <table class="w-full text-sm border border-gray-200 rounded">
+                <thead class="bg-gray-50">
+                  <tr>
+                    <th class="text-left p-3 border-b">Category</th>
+                    <th class="text-left p-3 border-b">Tools</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td class="p-3 border-b font-semibold">Lead Gen</td><td class="p-3 border-b">Business Directory, Justdial, Indiamart, Sulekha, Email Scraper, Phone Scraper, WA Number Scraper, Google Maps, Global Directory</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">Social</td><td class="p-3 border-b">Social Media Scraper (Facebook, YouTube, Instagram, LinkedIn), FB Ad Library</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">eCommerce</td><td class="p-3 border-b">Amazon/Flipkart, Myntra, Snapdeal</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">Corporate</td><td class="p-3 border-b">Corporate Scraper, Job Portals, JustDial CRM, Indiamart CRM, B2C Data</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">Website</td><td class="p-3 border-b">Search Engine, Live Website, Website Data, Document Scraper, Image Scraper</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">Domain</td><td class="p-3 border-b">WHOIS Lookup, URL Checker, Domain Verifier</td></tr>
+                  <tr><td class="p-3 border-b font-semibold">WhatsApp</td><td class="p-3 border-b">WA Checker, WA Verifier, Bulk WA Sender</td></tr>
+                  <tr><td class="p-3 font-semibold">Verify</td><td class="p-3">Phone Verifier, Email Verifier, Language Translator</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <!-- WordPress Addon -->
+          <section class="mt-12 pt-10" id="wordpress">
+            <h2 class="text-2xl font-bold mb-4">WordPress Integration</h2>
+
+            <div class="bg-purple-50 border border-purple-200 rounded-lg p-5 mb-6">
+              <p class="text-purple-800 font-semibold mb-1"><i class="ri-wordpress-line"></i> Optional Addon</p>
+              <p class="text-purple-700 text-sm">
+                Want to use BubbleScraper inside WordPress Admin? The <b>BubbleScraper WordPress Addon</b> is available
+                as a separate purchase on CodeCanyon. It embeds this dashboard as a native WordPress Admin page.
+              </p>
+            </div>
+
+            <h3 class="text-lg font-semibold mb-2">How it works</h3>
+            <ol class="list-decimal list-inside text-gray-700 mb-4 space-y-2">
+              <li>Install &amp; start this BubbleScraper app on your server</li>
+              <li>Install the WordPress Addon plugin</li>
+              <li>Enter your app URL in the plugin settings (e.g., <code class="text-red-600 font-mono">https://app.yourdomain.com</code>)</li>
+              <li>Use all 33 tools directly from your WordPress sidebar</li>
+            </ol>
+
+            <h3 class="text-lg font-semibold mb-2">Nginx / Reverse Proxy</h3>
+            <p class="text-gray-700 mb-3">
+              If your app runs on a different port or server from WordPress, you may need to proxy it.
+              Make sure iframe embedding headers are set:
+            </p>
+            <div class="bg-gray-800 text-white font-mono p-4 rounded mb-4 text-sm space-y-1">
+              <p>location /scraper/ {</p>
+              <p>&nbsp;&nbsp;proxy_pass         http://127.0.0.1:3000/;</p>
+              <p>&nbsp;&nbsp;proxy_set_header   Host $host;</p>
+              <p>&nbsp;&nbsp;proxy_http_version 1.1;</p>
+              <p>&nbsp;&nbsp;<span class="text-gray-400"># Allow iframe embedding</span></p>
+              <p>&nbsp;&nbsp;add_header X-Frame-Options "";</p>
+              <p>&nbsp;&nbsp;add_header Content-Security-Policy "frame-ancestors *";</p>
+              <p>}</p>
+            </div>
+          </section>
+
+          <!-- FAQ Section -->
+          <section class="mt-12 pt-10" id="faq">
+            <h2 class="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+            <div class="space-y-4">
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">What are the server requirements?</summary>
+                <p class="mt-2 text-gray-600 text-sm">Node.js 18+ and npm 9+. 1 GB RAM minimum, 2 GB recommended. Works on any Linux, macOS, or Windows server.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">How many websites can I scrape?</summary>
+                <p class="mt-2 text-gray-600 text-sm">There are no per-query limits. Scrape as many websites as you need. The only limit is your server's resources.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">Do I need to install a browser?</summary>
+                <p class="mt-2 text-gray-600 text-sm">No. The <code>npx playwright install chromium</code> command downloads a dedicated Chromium browser automatically. No system browser needed.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">Some scrapers return empty results. What do I do?</summary>
+                <p class="mt-2 text-gray-600 text-sm">Most tools work out of the box. For stubborn sites with bot detection, enable Bright Data in <b>Dashboard &rarr; Profile &rarr; Settings</b>. This routes scrapers through residential proxies.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">Can I use this with WordPress?</summary>
+                <p class="mt-2 text-gray-600 text-sm">Yes! The <b>BubbleScraper WordPress Addon</b> (sold separately) embeds the full dashboard inside WordPress Admin. See the <a href="#wordpress" class="text-blue-600 underline">WordPress Integration</a> section.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">How do I keep the app running after closing the terminal?</summary>
+                <p class="mt-2 text-gray-600 text-sm">Use PM2. See the <a href="#production" class="text-blue-600 underline">Production</a> section for setup instructions.</p>
+              </details>
+              <details class="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <summary class="font-semibold cursor-pointer">What keyboard shortcuts are available?</summary>
+                <p class="mt-2 text-gray-600 text-sm">
+                  <code>Cmd+K</code> / <code>Ctrl+K</code>: Open command palette (jump to any tool)<br>
+                  <code>&uarr;</code> <code>&darr;</code> <code>Enter</code>: Navigate and select<br>
+                  <code>Esc</code>: Close
+                </p>
+              </details>
+            </div>
+          </section>
+
+          <!-- Troubleshooting -->
+          <section class="mt-12 pt-10" id="troubleshooting">
+            <h2 class="text-2xl font-bold mb-6">Troubleshooting</h2>
+            <div class="space-y-6">
+              <div>
+                <h3 class="font-bold text-gray-800">Port already in use</h3>
+                <div class="bg-gray-800 text-white font-mono p-4 rounded mt-2 text-sm space-y-1">
+                  <p>lsof -ti:3000 | xargs kill -9</p>
+                  <p>npm start</p>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-800">Browser not found</h3>
+                <div class="bg-gray-800 text-white font-mono p-4 rounded mt-2 text-sm space-y-1">
+                  <p>npx playwright install chromium</p>
+                </div>
+              </div>
+              <div>
+                <h3 class="font-bold text-gray-800">Clean reinstall</h3>
+                <div class="bg-gray-800 text-white font-mono p-4 rounded mt-2 text-sm space-y-1">
+                  <p>rm -rf node_modules .next</p>
+                  <p>npm install && npm run build</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Change Log Section -->
+          <section class="mt-12 pt-10" id="logs">
+            <h2 class="text-2xl font-bold mb-6">Change Log</h2>
+            <div class="space-y-6 text-gray-700">
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 11.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li><strong>Agentic AI Terminal:</strong> High-performance conversational chat interface.</li>
+                  <li>Autonomous natural language routing to 33 specialized scraping tools.</li>
+                  <li>Inline data extraction results and tables within the terminal chat log.</li>
+                  <li>Retro-futuristic "hacker-style" interface redesign.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 10.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Complete documentation overhaul</li>
+                  <li>Streamlined setup: 3-step install</li>
+                  <li>WordPress Addon support (sold separately)</li>
+                  <li>Improved dark mode</li>
+                  <li>Command palette (Cmd+K / Ctrl+K)</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 9.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Added <strong>Website URLs Checker</strong> to check whether a website is active or inactive.</li>
+                  <li>Implemented <strong>Verified Domains</strong> tool.</li>
+                  <li>Added latitude and longitude generation in <strong>Google Map Scraper</strong>.</li>
+                  <li>Added <strong>CID (Customer ID)</strong> retrieval in Google Map Scraper.</li>
+                  <li>Bug fixes and performance improvements.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 8.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Implemented <strong>Google Sign-In</strong> feature.</li>
+                  <li>Added <strong>YouTube demo</strong> videos as tutorials for each scraper tool.</li>
+                  <li>Country selection for phone number region.</li>
+                  <li>UI and core functionality bug fixes.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 7.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Introduced <strong>Live Website Scraper</strong>.</li>
+                  <li>Added <strong>Yahoo Search Scraper</strong>.</li>
+                  <li>Integrated <strong>DuckDuckGo Search Scraper</strong>.</li>
+                  <li>Launched <strong>Facebook</strong> and <strong>YouTube</strong> Scrapers.</li>
+                  <li>Bug fixes.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 6.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Added <strong>Bing Search Scraper</strong>.</li>
+                  <li>Improved Google Search data accuracy.</li>
+                  <li>Enhanced phone number accuracy in Google Maps Scraper.</li>
+                  <li>Added social media URL extraction in Website Data Scraper.</li>
+                  <li>Bug fixes and performance improvements.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSION 5.0 RELEASED::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Cloud service integration for all major scrapers.</li>
+                  <li>Direct Call and Text SMS features.</li>
+                  <li>Direct WhatsApp Messaging and Email sending.</li>
+                  <li>Enhanced data response speed.</li>
+                </ul>
+              </div>
+              <div>
+                <h3 class="font-bold text-blue-800">::VERSIONS 1.0 - 4.0::</h3>
+                <ul class="list-disc list-inside ml-4 mt-1 space-y-1">
+                  <li>Initial release with core scrapers</li>
+                  <li>Document and Image Data Scrapers</li>
+                  <li>Business Directory and Whois tools</li>
+                  <li>WhatsApp and Email messaging features</li>
+                  <li>Multiple dashboard redesigns</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <!-- Thank You Section -->
+          <section class="mt-16 mb-12 pt-10" id="thanks">
+            <div
+              class="max-w-xl mx-auto text-center bg-gradient-to-b from-white to-blue-50 p-10 rounded-lg shadow border border-gray-200"
+            >
+              <h2 class="text-2xl font-bold text-blue-700 mb-2">
+                Thank You for Choosing BubbleScraper!
+              </h2>
+              <p class="text-gray-600">
+                If you need help, reach out to our support team at
+                <a href="mailto:contact@ourcribhub.com" class="text-blue-600 underline">contact@ourcribhub.com</a>. Happy scraping!
+              </p>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+      function toggleDropdown() {
+        const dropdown = document.getElementById("setupDropdown");
+        dropdown.classList.toggle("hidden");
+        dropdown.classList.toggle("block");
+      }
+
+      const sidebar = document.getElementById("sidebar");
+      const mobileMenuBtn = document.getElementById("mobileMenuBtn");
+
+      mobileMenuBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        sidebar.classList.toggle("-translate-x-full");
+      });
+
+      document.addEventListener("click", function (e) {
+        const isClickInsideSidebar = sidebar.contains(e.target);
+        const isClickOnToggle = mobileMenuBtn.contains(e.target);
+
+        if (
+          !isClickInsideSidebar &&
+          !isClickOnToggle &&
+          window.innerWidth < 768
+        ) {
+          sidebar.classList.add("-translate-x-full");
+        }
+      });
+    </script>
+  </body>
+</html>

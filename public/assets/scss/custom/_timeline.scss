@@ -1,0 +1,55 @@
+/* Start timeline Styles */
+
+.timeline-line {
+  @apply block w-1 bg-gray-200 dark:bg-bodybg absolute h-[98%] lg:start-1/2 start-5;
+}
+
+.timeline-main {
+  @apply flex flex-col sm:flex-row items-center relative;
+}
+
+.timeline-left {
+  @apply flex justify-start w-full mx-auto items-center;
+
+  .timeline-body {
+    @apply w-full lg:w-1/2 sm:ps-20 ps-16 relative after:absolute after:inline-block after:border-[10px] after:border-e-0 after:border-t-transparent after:border-b-transparent after:border-s-gray-200 lg:after:rotate-0 after:rotate-180 sm:after:start-[70px] after:start-[55px] after:top-[45%];
+  }
+  .timeline-body {
+    @apply lg:pe-10 lg:ps-0 lg:after:end-[30px] lg:after:start-auto  #{!important};
+  }
+}
+
+.timeline-right {
+  @apply flex justify-end w-full mx-auto items-center;
+  .timeline-body {
+    @apply w-full lg:w-1/2 sm:ps-20 ps-16 relative after:absolute after:inline-block after:border-[10px] after:border-s-0 after:border-t-transparent after:border-b-transparent after:border-e-gray-200 lg:after:start-[46px] sm:after:start-[70px] after:start-[55px] after:top-[45%];
+  }
+  .timeline-body {
+    @apply lg:ps-14 lg:after:start-[46px] #{!important};
+  }
+}
+
+.timeline-icon {
+  @apply rounded-full border-gray-200 dark:border-white/10 avatar avatar-lg absolute lg:start-[47.5%] xl:start-[48.5%] start-0 sm:top-auto top-[40%] flex items-center justify-center ring-0;
+}
+.dark {
+    .timeline-left {
+      .timeline-body {
+        @apply after:border-s-white/10;
+      }
+    }
+
+    .timeline-right {
+      .timeline-body {
+        @apply after:border-e-white/10;
+      }
+    }
+}
+.timeline-start {
+  @apply h-3 w-3 rounded-full bg-primary relative lg:start-[49.7%] start-4;
+}
+.timeline-end {
+  @apply h-3 w-3 rounded-full bg-primary relative lg:start-[49.7%] bottom-0 start-4 ;
+}
+
+/*End  timeline Styles */

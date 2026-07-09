@@ -1,0 +1,114 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html.dark body {
+    @apply bg-[#030504] text-[#00FF41];
+    font-family: 'Courier New', Courier, monospace;
+    overflow-x: hidden;
+  }
+  html.dark body::before {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 2;
+    background-size: 100% 2px, 3px 100%;
+    pointer-events: none;
+  }
+}
+
+@layer components {
+  /* ── Light Mode Base defaults (Wait, we kept original ones behind tailwind classes generally) ── */
+  html:not(.dark) .box {
+    @apply bg-white rounded-md shadow-sm border border-gray-200 mb-5;
+  }
+  html:not(.dark) .box-header {
+    @apply px-6 py-4 border-b border-gray-200 flex items-center justify-between;
+  }
+  html:not(.dark) .box-title {
+    @apply text-base font-semibold text-gray-800;
+  }
+  html:not(.dark) .box-body {
+    @apply p-6;
+  }
+  html:not(.dark) .ti-form-input {
+    @apply w-full border border-gray-200 rounded-md px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500 bg-white;
+  }
+
+  /* ── Extreme Hacker Dark Mode Cards ── */
+  .dark .box {
+    @apply bg-[#020502] mb-5 relative;
+    border: 1px dashed rgba(0, 255, 65, 0.4);
+    box-shadow: 0 0 15px rgba(0, 255, 65, 0.15), inset 0 0 20px rgba(0, 255, 65, 0.05);
+  }
+  .dark .box-header {
+    @apply px-4 py-3 flex items-center justify-between text-[#00FF41];
+    border-bottom: 1px dashed rgba(0, 255, 65, 0.8);
+    background: repeating-linear-gradient(90deg, transparent 0, transparent 2px, rgba(0, 255, 65, 0.1) 2px, rgba(0, 255, 65, 0.1) 4px);
+  }
+  .dark .box-title {
+    @apply text-sm font-bold uppercase tracking-widest text-[#00FF41];
+    text-shadow: 0 0 8px #00FF41;
+  }
+  .dark .box-body {
+    @apply p-5 text-[#00FF41];
+  }
+
+  /* ── EXTREME Hacker Inputs ── */
+  .dark .ti-form-input {
+    @apply w-full bg-[#020502] px-3 py-2 text-sm text-[#00FF41] placeholder-[#00FF41]/20 focus:outline-none transition-all;
+    border: 1px solid rgba(0, 255, 65, 0.5);
+    border-radius: 0;
+    box-shadow: inset 0 0 10px rgba(0, 255, 65, 0.3), 0 0 5px rgba(0, 255, 65, 0.2);
+  }
+  .dark .ti-form-input:focus {
+    border: 1px solid #00FF41;
+    box-shadow: inset 0 0 15px rgba(0, 255, 65, 0.5), 0 0 10px rgba(0, 255, 65, 0.5);
+  }
+
+  /* ── Hacker Buttons ── */
+  .dark .ti-btn {
+    @apply px-4 py-1.5 text-xs font-bold uppercase tracking-widest text-[#00FF41] transition-all duration-100 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#00FF41] hover:text-[#000] hover:shadow-[0_0_20px_#00FF41];
+    border: 1px solid #00FF41;
+    border-radius: 0;
+    background: transparent;
+  }
+  html:not(.dark) .ti-btn {
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200 disabled:opacity-50 border border-gray-200;
+  }
+
+  /* ── Spinner ── */
+  .dark .ti-spinner {
+    @apply animate-spin rounded-none border-[4px] border-[#00FF41] border-r-transparent inline-block;
+    box-shadow: 0 0 10px #00FF41;
+  }
+}
+
+/* ── Scrollbar Hacker Override ── */
+.dark ::-webkit-scrollbar { width: 8px; height: 8px; }
+.dark ::-webkit-scrollbar-track { background: #000; border-left: 1px dashed #00FF41; }
+.dark ::-webkit-scrollbar-thumb { background: #00FF41; border-radius: 0; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #FFF; }
+
+/* ── Tool marquee ── */
+@keyframes marquee-left {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes marquee-right {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 9999px; }
+.dark ::-webkit-scrollbar-track { background: #1e293b; }
+.dark ::-webkit-scrollbar-thumb { background: #475569; }

@@ -1,0 +1,9 @@
+/* Loader Styles */
+[loader="disable"] #loader {
+  @apply hidden;
+}
+#loader {
+  @apply fixed top-0 start-0 w-full h-full bg-white dark:bg-bodybg flex justify-center items-center z-[9999];
+}
+
+/* Loader Styles */

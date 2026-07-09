@@ -1,0 +1,501 @@
+@layer components {
+  /* Start Custom Styles */
+  .page-header {
+    @apply py-5;
+  }
+
+  .main-content {
+    @apply sm:px-7 px-6;
+  }
+
+  .content {
+    @apply lg:ms-64 transition-all ms-0;
+  }
+
+  pre {
+    @apply border-gray-200 border bg-slate-200 text-[0.75rem] p-5;
+  }
+
+  html {
+    @apply font-inter;
+  }
+
+  body {
+    @apply bg-bodybg h-full text-gray-600 dark:text-white m-0 font-inter font-normal text-sm relative;
+
+    ::-webkit-scrollbar {
+      @apply w-[5px] h-[5px] bg-gray-100 dark:bg-black/20;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      @apply w-[5px] h-[2px] bg-gray-300 dark:bg-black/20;
+    }
+  }
+  .dark {
+    body {
+      ::-webkit-scrollbar {
+        @apply bg-black/20;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        @apply bg-black/40;
+      }
+    }
+  }
+
+  .page {
+    @apply flex flex-col h-full min-h-screen overflow-x-clip;
+  }
+
+  code {
+    @apply text-danger text-sm;
+  }
+
+  .icons-list {
+    @apply list-none mt-0 -me-[1px] -mb-[1px] ms-0 p-0 flex flex-wrap;
+  }
+
+  .icons-list .icons-list-item {
+    @apply flex flex-col text-center p-2 no-underline relative items-center justify-center border border-gray-200 dark:border-white/10 rounded-md;
+
+    &:hover {
+      i {
+        @apply scale-150;
+      }
+    }
+  }
+
+  .icons-list .icons-list-item i {
+    @apply text-2xl text-primary;
+  }
+
+  .icon-label {
+    @apply text-gray-500 dark:text-white/70 text-xs mt-4;
+  }
+
+  .app-sidebar .simplebar-scrollbar:before {
+    @apply bg-gray-200 dark:bg-gray-50 #{!important};
+  }
+
+  .simplebar-track.simplebar-vertical {
+    @apply w-1 #{!important};
+    .simplebar-scrollbar:before {
+      @apply start-0 end-0;
+    }
+  }
+
+  [data-toggled="icon-overlay-close"] {
+    .content {
+      @apply lg:ms-24;
+    }
+  }
+
+  [name="hs-ratings-readonly"] {
+    @apply hover:bg-transparent focus:bg-transparent #{!important};
+  }
+  /* Start:: Back to Top */
+  .scrollToTop {
+    @apply bg-primary text-white fixed bottom-8 end-8 items-center justify-center text-center hidden z-[10000] h-10 w-10 bg-no-repeat bg-center transition ease-linear duration-[0.1s] rounded-md shadow-md;
+  }
+  .scrollToTop {
+    @apply p-[0] #{!important};
+  }
+  /* Start:: Back to Top */
+  select option:active,
+  select option:hover,
+  select option:focus {
+    background-color: green !important;
+  }
+
+  /* End Custom Styles */
+  select {
+    @apply rtl:bg-[left_0.5rem_center]  pe-9 ps-2;
+  }
+  #drag-right,
+  #drag-center,
+  #drag-left {
+    .box {
+      @apply touch-none;
+    }
+  }
+  #responsive-overlay {
+    @apply transition-all duration-100 fixed inset-0 z-[49] bg-gray-900 invisible bg-opacity-0;
+    &.active {
+      @apply bg-opacity-50 dark:bg-opacity-80 visible;
+    }
+  }
+}
+@layer utilities {
+  .aspect-w-16 {
+    position: relative;
+    padding-bottom: calc(var(--tw-aspect-h) / var(--tw-aspect-w) * 100%);
+    --tw-aspect-w: 16;
+  }
+
+  .aspect-w-16 > * {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .aspect-h-9 {
+    --tw-aspect-h: 9;
+  }
+
+  .aspect-w-1 {
+    position: relative;
+    padding-bottom: calc(var(--tw-aspect-h) / var(--tw-aspect-w) * 100%);
+    --tw-aspect-w: 1;
+  }
+
+  .aspect-w-1 > * {
+    position: absolute;
+    height: 100%;
+    width: 100%;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+  }
+
+  .aspect-h-1 {
+    --tw-aspect-h: 1;
+  }
+}
+ .simplebar-scrollbar:before {
+  @apply bg-black/10 dark:bg-gray-50 #{!important};
+}
+.rti--container{
+  @apply bg-white dark:bg-bodybg border-defaultborder dark:border-defaultborder/10 #{!important};
+}
+.rti--tag{
+  @apply bg-primary  text-white dark:bg-primary #{!important};
+}
+.rti--input{
+  @apply bg-bodybg dark:bg-bodybg;
+}
+.rti--tag button:hover {
+  @apply dark:text-white;
+}
+.react-select__input-container,.react-select__single-value{
+  @apply dark:text-white/70 #{!important};
+}
+// .rti--container:focus-within{
+//   @apply box-shadow-0;
+// }
+.react-select__menu,.filepond--root .filepond--drop-label,.filepond--panel-center.filepond--panel-root{
+  @apply bg-bodybg dark:bg-bodybg border-defaultborder dark:border-defaultborder/10 #{!important};
+}
+.react-select__option--is-focused,.react-select__option:hover{
+  @apply bg-primary text-white;
+}
+.react-select__option.react-select__option--is-focused ,.react-dropdown-select-option,.react-dropdown-select-item-selected{
+  @apply bg-primary text-white #{!important};
+
+}
+.team-right.team-members .ti-form-select{
+  @apply border-0 #{!important};
+}
+.filepond--drop-label.filepond--drop-label label{
+  @apply dark:text-white/70;
+}
+.filepond--panel-top.filepond--panel-root,.filepond--panel-bottom.filepond--panel-root{
+  @apply bg-white dark:bg-bodybg  #{!important};
+}
+.react-dropdown-select{
+  @apply border-defaultborder   dark:border-defaultborder/10 #{!important};
+}
+.react-dropdown-select-dropdown{
+  @apply bg-white dark:bg-bodybg  border-defaultborder dark:border-defaultborder/10 #{!important};
+
+}
+.react-dropdown-select-item{
+  @apply border-b-defaultborder dark:border-b-defaultborder/10 #{!important};
+
+}
+@media (max-width: 380px) {
+  .task-choice.totdolist {
+    @apply w-[200px]  #{!important};
+  }
+  .multiple-month-picker .react-datepicker {
+    @apply w-[19rem]  #{!important};
+}
+}
+.ti-btn-soft-light:hover{
+  @apply dark:bg-bodybg dark:text-white/70 #{!important};
+}
+.apexcharts-legend-text{
+  @apply dark:text-white/70 #{!important};
+}
+.MuiRating-iconEmpty,.MuiRating-icon.MuiRating-iconEmpty { 
+  svg {
+    @apply dark:text-white/70;
+  }
+}
+.apexcharts-legend-text {
+  @apply ps-[15px] ms-[-10px] #{!important};
+}
+.ri-arrow-right-s-line::before {
+  @apply  rtl:content-['\ea64'];
+}
+.ri-arrow-left-s-line::before {
+  @apply  rtl:content-['\ea6e'];
+}
+#leads-by-soruce .apexcharts-text {
+  @apply rtl:-translate-x-0 dir-ltr;
+}
+//  .apexcharts-yaxis .apexcharts-text{
+//   @apply rtl:-translate-x-5;
+// }
+ #buy-style-1,.select-sizes {
+  .react-select__control{
+    @apply  border-0 #{!important};
+  }
+}
+.swal2-validation-message{
+  @apply dark:bg-bodybg dark:text-white/70 #{!important};
+
+}
+[data-vertical-style="doublemenu"] {
+  @media screen and (min-width: 992px) {
+    .side-menu__item {
+        padding: 0.6rem .75rem;
+    }
+ 
+  }
+}
+.yarl__container,.yarl__thumbnails_container{
+  @apply bg-black/80 #{!important};
+}
+#navbar-collapse-basic .hs-dropdown-menu{
+  @apply absolute;
+}
+
+.MuiStepLabel-label{
+  @apply text-defaultcolor dark:text-white/70 #{!important};
+  &.Mui-active {
+  @apply text-primary #{!important};
+}
+
+}
+.MuiSvgIcon-fontSizeMedium,.Mui-active {
+  @apply text-primary #{!important};
+}
+.MuiButton-root.MuiButton-contained.MuiButton-containedPrimary{
+  @apply bg-primary;
+}
+.MuiStepLabel-iconContainer.Mui-disabled{
+  padding-inline-end: 8px !important;
+}
+.MuiButton-textPrimary {
+  @apply bg-secondary text-white;
+  &:hover{
+     @apply bg-secondary text-white;
+  }
+}
+.wizard-tab .wizard-content {
+  @apply p-[3rem];
+}
+.payment-card-container {
+  @apply relative p-[0.625rem] border border-gray-200 dark:border-white/10 rounded-md
+}
+.payment-card-container .ti-form-checkbox {
+  @apply absolute  right-[0.75rem] top-[1.7rem];
+}
+.btn-check {
+  position: absolute;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
+}
+.btn-group label{
+  position: relative;
+  flex: 1 1 auto;
+}
+.MuiTypography-root.MuiTypography-caption{
+  @apply hidden;
+}
+.react-select__control{
+  @apply shadow-none #{!important};
+}
+.Toastify__toast {
+  @apply dark:bg-bodybg dark:text-white/70;
+  h6{
+    @apply  dark:text-white;
+  }
+}
+.swiper.Swiperslide-1 .swiper-backface-hidden .swiper-slide{
+  @apply border  border-defaultborder dark:border-defaultborder/10;
+} 
+.apexcharts-pie{
+  circle, line{
+    @apply dark:stroke-white/10;
+  }
+}
+.apexcharts-inner.apexcharts-graphical{
+  polygon{
+    @apply dark:stroke-white/10;
+  }
+}
+.selectpage, .basic-data-table .form-control {
+  @apply dark:bg-bodybg dark:text-white/70  #{!important};
+
+}
+.candlestick,#crypto{
+  .apexcharts-text{
+    @apply origin-center rotate-0 #{!important};
+  }
+} 
+.color-picker-input{
+  @apply relative top-1;
+  input{
+    @apply w-[30px] h-[30px] bg-primary;
+  }
+}
+.color-picker-input::after {
+  @apply content-['\efc5'] font-['remixicon'] text-white/90 text-lg px-[7px] py-[3px] #{!important};
+}
+.color-picker-input::before {
+  @apply absolute content-[''] top-0 start-0 h-[100px] w-[100px] bg-primaryrgb rounded-sm;
+}
+.pcr-button .Themebackgroundcolor,
+.Themeprimarycolor {
+  @apply mt-[-11px] -ml-2  rtl:-mr-2;
+}
+.MuiTreeItem-content{
+ @apply mb-[10px];
+}
+.MuiTreeItem-content:hover,.MuiTreeItem-content.Mui-expanded.Mui-selected{
+  @apply bg-primary/10;
+}
+// .MuiSvgIcon-root.MuiSvgIcon-fontSizeMedium {
+//   @apply rtl:rotate-180;
+// }
+.react-select__indicators .react-select__dropdown-indicator:after {
+  @apply rtl:left-2 rtl:right-[inherit] #{!important};
+}
+.task-choice {
+  @apply  w-[110px];
+}
+select{
+  @apply dark:bg-transparent dark:border-white/10;
+  option{
+      @apply dark:bg-bodybg dark:border-white/10;
+  }
+ &:focus{
+  @apply dark:border-white/10 #{!important}; 
+ }
+}
+.react-dropdown-select{
+  @apply rtl:dir-rtl #{!important}; 
+}
+.react-select--is-disabled .react-select__control--is-disabled{
+ @apply dark:bg-white/10 border dark:border-defaultborder/10 #{!important}; 
+}
+@media (max-width: 768px) {
+  .MuiStepper-root.MuiStepper-horizontal{
+    @apply block #{!important};
+  }
+  .MuiStepConnector-line.MuiStepConnector-lineHorizontal{
+    @apply border-transparent ;
+  }
+  .MuiStep-root.MuiStep-horizontal{
+    @apply mb-3;
+  }
+  .wizard-tab .wizard-content {
+      padding: 1rem;
+  }
+}
+.MuiStepConnector-line.MuiStepConnector-lineHorizontal{
+  @apply dark:border-defaultborder/10;
+}
+
+.apexcharts-pie .apexcharts-text {
+  @apply rtl:-translate-x-0;
+}
+.apexcharts-radialbar text {
+  --tw-translate-y: -1rem;
+}
+// nav .hs-dropdown{
+//   @apply z-10 #{!important};
+// }
+.apexcharts-pie-series path{
+  @apply dark:stroke-white/10;
+}
+.MuiCollapse-root.MuiCollapse-vertical.MuiTreeItem-groupTransition{
+  @apply rtl:pl-0 rtl:pr-3;
+}
+.react-select__control{
+  @apply dark:bg-transparent #{!important};
+}
+.apexcharts-tooltip-marker{
+  @apply rtl:ml-2;
+}
+.MuiStepContent-root,.MuiStepConnector-line.MuiStepConnector-lineVertical{
+  @apply dark:border-defaultborder/10 #{!important};
+}
+.MuiPaper-root.MuiPaper-elevation{
+  @apply dark:bg-bodybg dark:text-white/70;
+}
+.react-select__control,.Select2__control{
+  @apply dark:border-defaultborder/10 #{!important};
+}
+[type='password']{
+  @apply dark:bg-bodybg dark:text-white/70; 
+}
+.Profile-post-footer .react-select__control{
+  @apply  w-[125px];
+}
+.MuiButton-textPrimary:hover{
+  @apply text-dark;
+}
+.rti--container {
+   --rti-main: transparent !important;
+}
+// @media screen and (min-width: 768px) {
+// .react-datepicker-popper{
+//   @apply  w-[350px];
+// }
+// }
+.hs-select.relative button{
+ @apply mb-[5px];
+}
+#area-chart,#line-chart,#bar-chart,#column-chart,#timeline-basic,#mixed-linecolumn,#boxplot-basic,#candlestick-basic,#scatter-datetime,#bubble-3d,#heatmap-basic {
+  .apexcharts-canvas {
+    @apply rtl:dir-ltr;
+  }
+}
+
+.react-datepicker-popper .react-datepicker__triangle {
+  @apply dark:stroke-white/10;
+}
+.ql-formats{
+  button svg{
+    @apply dark:fill-white/80;
+  }
+}
+.react-select__control{
+  @apply min-h-[46px] #{!important};
+}
+.apexcharts-canvas{
+  @apply rtl:dir-ltr  #{!important};
+}
+.visitors .apexcharts-text.apexcharts-yaxis-label.apexcharts-yaxis-label:where([dir="rtl"], [dir="rtl"] *){
+  @apply translate-x-0; 
+}
+
+#analytics  {
+  .apexcharts-datalabel-label,
+  .apexcharts-datalabel-value {
+      font-size: 1.2rem;
+  }
+}
+.Toastify__close-button--light{
+  @apply dark:text-white;
+}
+.MuiTreeItem-iconContainer svg{
+  @apply rtl:rotate-180;
+}

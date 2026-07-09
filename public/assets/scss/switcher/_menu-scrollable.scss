@@ -1,0 +1,31 @@
+/* Start Menu-Scrollable Styles */
+[data-menu-position="scrollable"] {
+  @media screen and (min-width: 992px) {
+    .app-sidebar {
+      @apply absolute;
+      // @apply relative;
+
+      #sidebar-scroll {
+        @apply h-auto pb-0;
+      }
+    }
+    &:not([data-nav-layout="horizontal"]) {
+      .content {
+        @apply min-h-[250vh];
+      }
+    }
+    &[data-nav-layout="horizontal"] {
+      .app-sidebar {
+        @apply relative top-0;
+      }.header{
+        @apply z-[51] #{!important};
+      }
+    }
+  }
+  @media screen and (max-width: 991px) {
+    .app-sidebar {
+      @apply absolute;
+    }
+  }
+}
+/* End Menu-Scrollable Styles */

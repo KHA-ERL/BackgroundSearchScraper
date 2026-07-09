@@ -1,0 +1,41 @@
+/* Start Header-Scrollable Styles */
+[data-header-position="scrollable"] {
+  @media screen and (min-width: 992px) {
+    .header {
+      // @apply absolute;
+      @apply relative #{!important};
+    }
+    .content{ 
+      @apply mt-0 #{!important};
+    }
+    &:not([data-menu-position="scrollable"]) {
+      .app-sidebar {
+        &.sticky-pin {
+          @apply top-0 #{!important};
+        }
+      }
+      &[data-toggled="open"] {
+        .app-sidebar {
+          &.sticky-pin {
+            @apply mt-0;
+          }
+        }
+      }
+    }
+    &[data-nav-layout="horizontal"] {
+      .header {
+        @apply relative;
+      }
+    }
+  }
+  @media screen and (max-width: 991px) {
+    .header {
+      @apply absolute;
+    }
+    .content{ 
+      @apply mt-[71px];
+    }
+  }
+}
+
+/* End Header-Scrollable Styles */
