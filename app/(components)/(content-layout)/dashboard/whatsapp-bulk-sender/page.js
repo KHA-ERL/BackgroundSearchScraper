@@ -18,18 +18,41 @@ export default function WhatsAppBulkSenderPage() {
 
   const phoneList = phones.split("\n").map((p) => p.trim()).filter(Boolean);
 
-  async function send() {
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [tokenLoading, setTokenLoading] = useState(false);
+
+  async function initiateSend() {
     if (!phoneList.length) { setError("Enter at least one phone number."); return; }
     if (!message.trim()) { setError("Enter a message."); return; }
     if (!confirmed) { setError("Please confirm that you have permission to message these recipients."); return; }
-    setError(""); setRows([]); setSummary(null); setLoading(true);
+    setError("");
+    setShowApprovalModal(true);
+  }
+
+  async function confirmAndSend() {
+    setTokenLoading(true);
+    setError(""); setRows([]); setSummary(null);
     try {
+      // Step 1: Obtain Human Approval Confirmation Token
+      const tokenRes = await axios.post("/api/whatsapp_sender/token/", {
+        phones: phoneList,
+        message,
+        country_code: countryCode,
+      });
+
+      const confirmationToken = tokenRes.data.confirmation_token;
+      setShowApprovalModal(false);
+      setLoading(true);
+
+      // Step 2: Call bulk sender endpoint with confirmation token
       const res = await axios.post("/api/whatsapp_sender/", {
         phones: phoneList,
         message,
         country_code: countryCode,
         delay_seconds: Number(delaySec),
+        confirmation_token: confirmationToken,
       });
+
       const data = res.data.data || [];
       setRows(data);
       setSummary(res.data.summary);
@@ -45,9 +68,11 @@ export default function WhatsAppBulkSenderPage() {
       setError(msg);
       toast({ type: "error", title: "Send failed", message: msg });
     } finally {
+      setTokenLoading(false);
       setLoading(false);
     }
   }
+
 
   return (
     <div>
@@ -159,13 +184,13 @@ export default function WhatsAppBulkSenderPage() {
 
           <div className="flex gap-3 flex-wrap items-center">
             <button
-              onClick={send}
-              disabled={loading}
+              onClick={initiateSend}
+              disabled={loading || tokenLoading}
               className="ti-btn ti-btn-outline border border-lime-600 bg-lime-600 text-white hover:bg-lime-700 flex items-center gap-2 disabled:opacity-60"
             >
-              {loading
-                ? <><span className="ti-spinner w-4 h-4 border-white/60" /> Sending…</>
-                : <><i className="ri-send-plane-line" /> Send Messages</>}
+              {loading || tokenLoading
+                ? <><span className="ti-spinner w-4 h-4 border-white/60" /> Processing…</>
+                : <><i className="ri-shield-check-line" /> Review & Send Messages</>}
             </button>
             {loading && (
               <p className="text-xs text-gray-400 animate-pulse">
@@ -176,6 +201,56 @@ export default function WhatsAppBulkSenderPage() {
           {error && <p className="text-red-500 text-sm mt-2"><i className="ri-error-warning-line mr-1" />{error}</p>}
         </div>
       </div>
+
+      {showApprovalModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <i className="ri-shield-keyhole-line text-amber-500 text-xl" /> Confirm Execution
+              </h3>
+              <button onClick={() => setShowApprovalModal(false)} className="text-gray-400 hover:text-gray-600">
+                <i className="ri-close-line text-xl" />
+              </button>
+            </div>
+            
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
+              You are about to launch an automated browser session to bulk message <strong>{phoneList.length} recipients</strong>.
+            </p>
+
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-md p-3 mb-4 text-xs text-amber-800 dark:text-amber-300 space-y-1">
+              <p className="font-semibold">Security Safeguard Enforced:</p>
+              <p>An interactive human approval confirmation token will be generated to authorize this transaction.</p>
+            </div>
+
+            <div className="mb-4">
+              <span className="text-xs font-semibold text-gray-400 block mb-1">MESSAGE PREVIEW</span>
+              <div className="bg-gray-50 dark:bg-gray-900 p-2.5 rounded border border-gray-200 dark:border-gray-700 text-xs font-mono text-gray-700 dark:text-gray-300 max-h-24 overflow-y-auto">
+                {message}
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setShowApprovalModal(false)}
+                disabled={tokenLoading}
+                className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-md"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmAndSend}
+                disabled={tokenLoading}
+                className="px-4 py-2 text-sm bg-lime-600 hover:bg-lime-700 text-white font-medium rounded-md flex items-center gap-2"
+              >
+                {tokenLoading ? <span className="ti-spinner w-4 h-4" /> : <i className="ri-check-double-line" />}
+                Authorize & Send
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {summary && (
         <div className="grid grid-cols-12 gap-5 mb-5">

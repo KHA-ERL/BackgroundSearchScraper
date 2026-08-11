@@ -61,6 +61,9 @@ export async function GET() {
   const mistral_api_key_set = !!(
     process.env.MISTRAL_API_KEY || file.MISTRAL_API_KEY
   );
+  const wa_security_secret_set = !!(
+    process.env.WA_SECURITY_SECRET || file.WA_SECURITY_SECRET
+  );
   const webhook_url = process.env.WEBHOOK_URL || file.WEBHOOK_URL || "";
 
   return NextResponse.json({
@@ -71,6 +74,7 @@ export async function GET() {
     bright_data_password_set,
     listclean_api_key_set,
     mistral_api_key_set,
+    wa_security_secret_set,
     webhook_url,
   });
 }
@@ -120,6 +124,12 @@ export async function POST(request) {
     file.MISTRAL_API_KEY = body.mistral_api_key;
   }
 
+  // ── WA Security Secret Key ──────────────────────────────────────────────
+  if (body.wa_security_secret !== undefined && body.wa_security_secret !== "") {
+    process.env.WA_SECURITY_SECRET = body.wa_security_secret;
+    file.WA_SECURITY_SECRET = body.wa_security_secret;
+  }
+
   // ── Webhook URL ──────────────────────────────────────────────────────────
   if (body.webhook_url !== undefined) {
     process.env.WEBHOOK_URL = body.webhook_url;
@@ -138,6 +148,7 @@ export async function POST(request) {
   const bright_data_password_set = !!process.env.BRIGHT_DATA_PASSWORD;
   const listclean_api_key_set = !!process.env.LISTCLEAN_API_KEY;
   const mistral_api_key_set = !!process.env.MISTRAL_API_KEY;
+  const wa_security_secret_set = !!process.env.WA_SECURITY_SECRET;
   const webhook_url = process.env.WEBHOOK_URL || "";
 
   return NextResponse.json({
@@ -148,6 +159,8 @@ export async function POST(request) {
     bright_data_password_set,
     listclean_api_key_set,
     mistral_api_key_set,
+    wa_security_secret_set,
     webhook_url,
   });
 }
+

@@ -1,9 +1,38 @@
-.next
+# ─── Build Output ──────────────────────────────────────────────────────────────
+.next/
+out/
+
+# ─── Environment / Secrets ─────────────────────────────────────────────────────
 .env
 .env.local
-.env.local.example
+.env.*.local
+# NOTE: .env.local.example is intentionally committed so contributors know
+# which variables to configure. It must NOT contain real secrets.
+
+# ─── Dependencies ──────────────────────────────────────────────────────────────
 node_modules/
 package-lock.json
+
+# ─── WhatsApp Browser Session ──────────────────────────────────────────────────
+# Contains Chromium profile data including WhatsApp Web authentication cookies.
+# NEVER commit — anyone with this data can access the WhatsApp account.
+.whatsapp_session/
+.whatsapp/
+
+# ─── OS / Editor ───────────────────────────────────────────────────────────────
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# ─── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Platform Installers / Launchers ───────────────────────────────────────────
 installer.bat
 starter.bat

@@ -33,6 +33,12 @@ export default function ProfilePage() {
   const [mistralSaving, setMistralSaving] = useState(false);
   const [mistralSaved, setMistralSaved] = useState(false);
 
+  // WA Security Secret state
+  const [waSecret, setWaSecret] = useState("");
+  const [waSecretSet, setWaSecretSet] = useState(false);
+  const [waSaving, setWaSaving] = useState(false);
+  const [waSaved, setWaSaved] = useState(false);
+
   // Webhook state
   const [webhookUrl, setWebhookUrl] = useState("");
   const [webhookSaving, setWebhookSaving] = useState(false);
@@ -51,10 +57,12 @@ export default function ProfilePage() {
         if (d.bright_data_password_set) setBdPasswordSet(true);
         if (d.listclean_api_key_set) setLcApiKeySet(true);
         if (d.mistral_api_key_set) setMistralApiKeySet(true);
+        if (d.wa_security_secret_set) setWaSecretSet(true);
         if (d.webhook_url) setWebhookUrl(d.webhook_url);
       })
       .catch(() => {});
   }, []);
+
 
   async function toggleDnsMode() {
     const next = dnsMode === "vpn" ? "doh" : "vpn";
@@ -138,6 +146,27 @@ export default function ProfilePage() {
       setMistralSaving(false);
     }
   }
+
+  async function saveWaSecret() {
+    if (!waSecret) return;
+    setWaSaving(true);
+    try {
+      const res = await fetch("/api/settings/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ wa_security_secret: waSecret }),
+      });
+      if (res.ok) {
+        setWaSecretSet(true);
+        setWaSecret("");
+        setWaSaved(true);
+        setTimeout(() => setWaSaved(false), 2000);
+      }
+    } finally {
+      setWaSaving(false);
+    }
+  }
+
 
   async function saveWebhook() {
     setWebhookSaving(true);
@@ -512,6 +541,37 @@ export default function ProfilePage() {
                   </button>
                 </div>
               </div>
+
+              {/* WhatsApp Security Secret Section */}
+              <div className="border-t border-gray-100 dark:border-white/10 pt-4">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  WhatsApp Security Secret Key {waSecretSet && <span className="text-green-500 font-semibold">(configured)</span>}
+                  {waSaved && (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-green-100 text-green-600 rounded font-semibold transition-opacity">Saved</span>
+                  )}
+                </label>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                  Used for signing human-approval confirmation tokens for bulk WhatsApp dispatches.
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={waSecret}
+                    onChange={(e) => setWaSecret(e.target.value)}
+                    placeholder={waSecretSet ? "••••••••  (saved — enter custom key to override)" : "Enter custom secret key (optional)"}
+                    className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  <button
+                    onClick={saveWaSecret}
+                    disabled={waSaving || !waSecret}
+                    className="ti-btn bg-sky-500 text-white hover:bg-sky-600 flex items-center gap-2 disabled:opacity-60 text-sm flex-shrink-0"
+                  >
+                    <i className={waSaving ? "ri-loader-4-line animate-spin" : "ri-save-line"} />
+                    {waSaving ? t("btn.loading") : t("btn.save")}
+                  </button>
+                </div>
+              </div>
+
             </div>
           </div>
         </div>

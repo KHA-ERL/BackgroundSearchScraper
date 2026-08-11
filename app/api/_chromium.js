@@ -69,4 +69,19 @@ export const chromium = {
       ],
     });
   },
+
+  launchPersistentContext: async (userDataDir, options = {}) => {
+    const useVpnDns = (process.env.DNS_MODE || "vpn").toLowerCase() !== "doh";
+    const dnsArgs = useVpnDns ? ["--disable-features=DnsOverHttps"] : [];
+
+    return _chromium.launchPersistentContext(userDataDir, {
+      ...options,
+      args: [
+        ...(options.args || []),
+        ...BASE_ARGS,
+        ...dnsArgs,
+      ],
+    });
+  },
 };
+
