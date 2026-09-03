@@ -6,14 +6,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
 
-// ── localStorage helpers ───────────────────────────────────────────────────────
-function saveHistory(apiPath, rows) {
+// ── History helpers ───────────────────────────────────────────────────────────
+function saveLocalHistory(apiPath, rows) {
   if (typeof window === "undefined" || !rows.length) return;
   try {
     localStorage.setItem(`sg_history_${apiPath}`, JSON.stringify(rows.slice(0, 30)));
   } catch (_) {}
 }
-function loadHistory(apiPath) {
+function loadLocalHistory(apiPath) {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(`sg_history_${apiPath}`);
@@ -21,12 +21,40 @@ function loadHistory(apiPath) {
   } catch (_) { return null; }
 }
 
+async function saveHistory(apiPath, rows) {
+  try {
+    await axios.post("/api/scrape_history/", { apiPath, rows: rows.slice(0, 30) });
+  } catch (_) {
+    saveLocalHistory(apiPath, rows);
+  }
+}
+
+async function loadHistory(apiPath) {
+  try {
+    const res = await axios.get(`/api/scrape_history/?apiPath=${encodeURIComponent(apiPath)}`);
+    return Array.isArray(res.data?.rows) ? res.data.rows : [];
+  } catch (_) {
+    return loadLocalHistory(apiPath);
+  }
+}
+
+async function logScrapeRun({ title, apiPath, rows, status }) {
+  try {
+    await axios.post("/api/request_logs/", {
+      toolName: title,
+      apiPath,
+      status,
+      rowCount: Array.isArray(rows) ? rows.length : 0,
+    });
+  } catch (_) {}
+}
+
 // ── CSV dropzone ───────────────────────────────────────────────────────────────
 function CsvDropzone({ onLoad }) {
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef(null);
 
-  function parseCSV(text) {
+  const parseCSV = useCallback((text) => {
     const lines = text.trim().split(/\r?\n/);
     // If it looks like a header row (no URL/number pattern), skip first line
     const hasHeader = lines[0] && !/^https?:|^\+?\d{7,}/.test(lines[0].trim());
@@ -35,21 +63,21 @@ function CsvDropzone({ onLoad }) {
       .map((l) => l.split(",")[0].replace(/^"|"$/g, "").trim())
       .filter(Boolean)
       .join("\n");
-  }
+  }, []);
 
-  function handleFile(file) {
+  const handleFile = useCallback((file) => {
     if (!file) return;
     const reader = new FileReader();
     reader.onload = (e) => onLoad(parseCSV(e.target.result));
     reader.readAsText(file);
-  }
+  }, [onLoad, parseCSV]);
 
   const onDrop = useCallback((e) => {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
     if (file) handleFile(file);
-  }, []);
+  }, [handleFile]);
 
   const onDragOver = useCallback((e) => { e.preventDefault(); setDragging(true); }, []);
   const onDragLeave = useCallback(() => setDragging(false), []);
@@ -105,10 +133,13 @@ export default function ScraperLayout({
 
   // Check for saved history on mount
   useEffect(() => {
+    let mounted = true;
     if (apiPath) {
-      const saved = loadHistory(apiPath);
-      if (saved && saved.length > 0) setHasHistory(true);
+      loadHistory(apiPath).then((saved) => {
+        if (mounted && saved && saved.length > 0) setHasHistory(true);
+      });
     }
+    return () => { mounted = false; };
   }, [apiPath]);
 
   const stats = statFields.map((f) => ({
@@ -135,21 +166,23 @@ export default function ScraperLayout({
       const data = transformResponse ? transformResponse(res.data) : res.data;
       const finalRows = Array.isArray(data) ? data : [];
       setRows(finalRows);
+      await logScrapeRun({ title, apiPath, rows: finalRows, status: "success" });
       if (finalRows.length > 0) {
-        saveHistory(apiPath, finalRows);
+        await saveHistory(apiPath, finalRows);
         setHasHistory(true);
       }
     } catch (e) {
       if (!axios.isCancel(e)) {
         setError(e?.response?.data?.error || "Failed to fetch data.");
+        await logScrapeRun({ title, apiPath, rows: [], status: "error" });
       }
     } finally {
       setLoading(false);
     }
   }
 
-  function handleRestoreHistory() {
-    const saved = loadHistory(apiPath);
+  async function handleRestoreHistory() {
+    const saved = await loadHistory(apiPath);
     if (saved) {
       setRows(saved);
       setHistoryRestored(true);

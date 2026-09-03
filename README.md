@@ -31,7 +31,7 @@ Set up in under 5 minutes. Just run `npm install`, `npm run build`, and `npm sta
 * **Language Translator** - Translate scraped content between languages
 
 ## Key Features
-* **33 tools in one dashboard.** No extra purchases for individual scrapers.
+* **33 tools in one dashboard.** One self-hosted workspace for scraping, enrichment, verification, and export workflows.
 * **Self-hosted.** Your server, your data, your rules. No data leaves your infrastructure.
 * **Unlimited scraping.** No per query fees, no rate limits, no credit system.
 * **Hacker CLI Design System.** Aggressive neon green on deep black interfaces with CRT scanline overlays.
@@ -43,9 +43,6 @@ Set up in under 5 minutes. Just run `npm install`, `npm run build`, and `npm sta
 * **Run history.** Previous scrape results are saved locally for quick access.
 * **Built with Next.js 14.** Modern React-based architecture. Fast, responsive, mobile friendly.
 * **Playwright-powered.** Real Chromium browser sessions for accurate scraping. No headless detection.
-
-## Optional WordPress Integration
-Want to use BubbleScraper inside WordPress Admin? The BubbleScraper WordPress Addon (sold separately on CodeCanyon) embeds the full dashboard natively inside your WordPress site. Just enter your server URL and all 33 tools are accessible from the WordPress sidebar.
 
 ## Requirements
 * Node.js 18 or higher

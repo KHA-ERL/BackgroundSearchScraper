@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { chromium } from "../_chromium.js";
 
 async function scrapeChannel(page, url) {
@@ -123,7 +122,7 @@ async function scrapeSearch(page, query) {
   });
 }
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const { url, query } = await request.json();
@@ -186,4 +185,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

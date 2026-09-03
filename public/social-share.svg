@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="Bubble Scraper social share preview">
+  <rect width="1200" height="630" fill="#fff8ef"/>
+  <circle cx="146" cy="118" r="80" fill="#fb923c" opacity=".28"/>
+  <circle cx="1004" cy="502" r="120" fill="#1f1814" opacity=".14"/>
+  <rect x="90" y="88" width="1020" height="454" rx="30" fill="#ffffff" stroke="#fed7aa" stroke-width="2"/>
+  <rect x="140" y="138" width="248" height="42" rx="21" fill="#ffedd5"/>
+  <text x="166" y="166" font-family="Inter, Arial, sans-serif" font-size="18" font-weight="800" fill="#9a3412">BUBBLE SCRAPER</text>
+  <text x="140" y="258" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="900" fill="#1f1814">Source-backed</text>
+  <text x="140" y="334" font-family="Inter, Arial, sans-serif" font-size="64" font-weight="900" fill="#1f1814">data intelligence</text>
+  <text x="144" y="397" font-family="Inter, Arial, sans-serif" font-size="24" fill="#675247">Scrape, verify, enrich, analyze, and export from one premium dashboard.</text>
+  <rect x="746" y="158" width="284" height="244" rx="24" fill="#1f1814"/>
+  <rect x="780" y="196" width="132" height="16" rx="8" fill="#fb923c"/>
+  <rect x="780" y="236" width="204" height="12" rx="6" fill="#fff8ef" opacity=".72"/>
+  <rect x="780" y="268" width="176" height="12" rx="6" fill="#fff8ef" opacity=".44"/>
+  <rect x="780" y="318" width="84" height="40" rx="20" fill="#fb923c"/>
+  <circle cx="965" cy="343" r="38" fill="#fff8ef" opacity=".92"/>
+  <path d="M947 343h36M965 325v36" stroke="#1f1814" stroke-width="10" stroke-linecap="round"/>
+</svg>

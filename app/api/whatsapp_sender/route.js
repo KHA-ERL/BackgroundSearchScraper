@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { chromium } from "../_chromium.js";
 import {
   verifyConfirmationToken,
@@ -13,7 +12,7 @@ import {
  * Opens WhatsApp Web and sends a message to each phone number.
  * Requires human approval token, payload inspection, and rate limiting validation.
  */
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const clientIp = request.headers.get("x-forwarded-for") || "local_client";
@@ -132,6 +131,4 @@ export const POST = requireLicense(async (request) => {
     console.error("WhatsApp sender error:", err);
     return NextResponse.json({ error: "Failed to send WhatsApp messages" }, { status: 500 });
   }
-});
-
-
+}

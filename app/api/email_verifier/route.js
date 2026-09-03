@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import dns from "dns/promises";
 import axios from "axios";
 
@@ -117,7 +116,7 @@ function mapListCleanResult(email, item) {
 }
 
 // ── Main handler ────────────────────────────────────────────────────────────
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   try {
     const { emails } = await request.json();
     if (!emails || !Array.isArray(emails) || emails.length === 0)
@@ -150,4 +149,4 @@ export const POST = requireLicense(async (request) => {
     console.error("Email verifier error:", err);
     return NextResponse.json({ error: "Failed to verify emails" }, { status: 500 });
   }
-});
+}

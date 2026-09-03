@@ -5,13 +5,18 @@ import axios from "axios";
 import { useLanguage } from "../../../../../components/LanguageProvider";
 import ResultsTable from "../../../../../components/ResultsTable";
 
-// ── Stats helpers via localStorage ────────────────────────────────────────────
+// ── Stats helpers with local fallback ─────────────────────────────────────────
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10);
 }
 export function trackRun(toolName) {
   if (typeof window === "undefined") return;
   try {
+    fetch("/api/request_logs/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ toolName, status: "success" }),
+    }).catch(() => {});
     const key = `sg_stats_${getTodayKey()}`;
     const stats = JSON.parse(localStorage.getItem(key) || "{}");
     stats.total = (stats.total || 0) + 1;
@@ -42,6 +47,16 @@ function getStats() {
   }
 }
 
+async function getServerStats() {
+  try {
+    const res = await fetch("/api/request_logs/", { cache: "no-store" });
+    if (!res.ok) throw new Error("Stats unavailable");
+    return await res.json();
+  } catch (_) {
+    return getStats();
+  }
+}
+
 function getRecentlyUsedTools(toolList) {
   if (typeof window === "undefined") return [];
   try {
@@ -63,6 +78,53 @@ function getRecentlyUsedTools(toolList) {
   }
 }
 
+function getRecentlyUsedToolsFromStats(toolList, statTools = {}) {
+  return Object.entries(statTools)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count]) => {
+      const match = toolList.find((tool) => tool.title.toLowerCase() === name.toLowerCase());
+      return match ? { ...match, runCount: count } : null;
+    })
+    .filter(Boolean);
+}
+
+async function loadChatCache() {
+  try {
+    const res = await fetch("/api/user_preferences/?key=ai_chat_cache", { cache: "no-store" });
+    if (!res.ok) throw new Error("Cache unavailable");
+    return res.json();
+  } catch (_) {
+    const cached = localStorage.getItem("sg_ai_chat_cache");
+    return { value: cached ? JSON.parse(cached) : null };
+  }
+}
+
+async function saveChatCache(logs) {
+  const value = { timestamp: Date.now(), logs };
+  try {
+    await fetch("/api/user_preferences/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "ai_chat_cache", value }),
+    });
+  } catch (_) {
+    localStorage.setItem("sg_ai_chat_cache", JSON.stringify(value));
+  }
+}
+
+async function clearChatCache() {
+  try {
+    await fetch("/api/user_preferences/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: "ai_chat_cache", value: null }),
+    });
+  } catch (_) {
+    localStorage.removeItem("sg_ai_chat_cache");
+  }
+}
+
 // ── Tool data ─────────────────────────────────────────────────────────────────
 // status: "green" = works well | "yellow" = partial/bot-dependent | "red" = heavily blocked
 const tools = [
@@ -78,6 +140,7 @@ const tools = [
   { title: "Global Directory",   href: "/dashboard/global-directory-scraper",   icon: "ri-earth-line",           color: "bg-cyan-50 text-cyan-600",     category: "Lead Gen", status: "red",   badge: "v17" },
   // Social
   { title: "Social Media",       href: "/dashboard/social-media-scraper",       icon: "ri-share-line",           color: "bg-pink-50 text-pink-500",     category: "Social",   status: "yellow", badge: "v14" },
+  { title: "Social Background",   href: "/dashboard/social-background-analysis", icon: "ri-user-search-line",     color: "bg-purple-50 text-purple-600", category: "Social",   status: "green",  badge: "v19" },
   { title: "FB Ad Library",      href: "/dashboard/facebook-ad-library",        icon: "ri-advertisement-line",   color: "bg-orange-50 text-orange-500", category: "Social",   status: "yellow", badge: "v17" },
   // eCommerce
   { title: "eCommerce",          href: "/dashboard/ecommerce-scraper",          icon: "ri-shopping-cart-line",   color: "bg-amber-50 text-amber-600",   category: "eCommerce", status: "red",  badge: "v14" },
@@ -112,8 +175,12 @@ const tools = [
 const CATEGORIES = ["All", "Lead Gen", "Social", "eCommerce", "Corporate", "Website", "Domain", "WhatsApp", "Verify"];
 
 const BADGE_COLORS = {
-  v14: "bg-sky-500", v15: "bg-purple-500", v16: "bg-teal-500",
-  v17: "bg-orange-500", v18: "bg-rose-500",
+  v14: "bg-sky-100 text-sky-900",
+  v15: "bg-purple-100 text-purple-900",
+  v16: "bg-teal-100 text-teal-900",
+  v17: "bg-orange-100 text-orange-900",
+  v18: "bg-rose-100 text-rose-900",
+  v19: "bg-purple-100 text-purple-900",
 };
 
 
@@ -123,39 +190,77 @@ function toolTitle(t, href, fallback) {
   return tr === key ? fallback : tr;
 }
 
+const categoryAccent = {
+  "Lead Gen": "from-amber-500 to-orange-500",
+  Social: "from-rose-500 to-fuchsia-500",
+  eCommerce: "from-orange-500 to-red-500",
+  Corporate: "from-cyan-500 to-blue-600",
+  Website: "from-sky-500 to-indigo-500",
+  Domain: "from-emerald-500 to-teal-500",
+  WhatsApp: "from-lime-500 to-emerald-500",
+  Verify: "from-violet-500 to-purple-500",
+};
+
+const STATUS_META = {
+  green: {
+    dot: "bg-emerald-500",
+    label: "Reliable",
+    chip: "bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-500/10 dark:text-emerald-300 dark:ring-emerald-500/30",
+  },
+  yellow: {
+    dot: "bg-amber-500",
+    label: "Conditional",
+    chip: "bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-500/10 dark:text-amber-300 dark:ring-amber-500/30",
+  },
+  red: {
+    dot: "bg-rose-500",
+    label: "Guarded",
+    chip: "bg-rose-50 text-rose-700 ring-rose-200 dark:bg-rose-500/10 dark:text-rose-300 dark:ring-rose-500/30",
+  },
+};
+
+const quickStarts = [
+  { label: "Find emails from a website", query: "email" },
+  { label: "Check WhatsApp numbers", query: "whatsapp" },
+  { label: "Scrape Google Maps leads", query: "google maps" },
+];
+
 // ── Recently used strip ───────────────────────────────────────────────────────
 function RecentlyUsed({ tools: recentTools }) {
   if (!recentTools.length) return null;
   return (
-    <div className="box mb-5">
-      <div className="box-header py-3">
-        <h5 className="box-title text-sm flex items-center gap-1.5">
-          <i className="ri-history-line text-sky-500" />
+    <section className="rounded-[1.25rem] border border-orange-100 bg-white/[0.85] p-4 shadow-[0_18px_50px_rgba(120,72,29,0.08)] backdrop-blur dark:border-[#00FF41]/30 dark:bg-[#020502] dark:shadow-[0_0_18px_rgba(0,255,65,0.10)]">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <h2 className="flex items-center gap-2 text-sm font-semibold text-stone-900 dark:text-[#00FF41]">
+          <span className="flex h-8 w-8 items-center justify-center rounded-full bg-orange-100 text-orange-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
+            <i className="ri-history-line" />
+          </span>
           Recently Used Today
-        </h5>
+        </h2>
+        <span className="text-xs font-medium text-stone-500 dark:text-[#00FF41]/60">{recentTools.length} active</span>
       </div>
-      <div className="box-body py-3">
-        <div className="flex flex-wrap gap-2">
+      <div className="overflow-x-auto pb-1">
+        <div className="flex min-w-max gap-2">
           {recentTools.map((tool) => (
             <Link
               key={tool.href}
               href={tool.href}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-bgdark hover:border-sky-200 dark:hover:border-sky-500/30 hover:shadow-sm transition-all duration-200 group`}
+              className="group flex min-h-11 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 py-2 text-left shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-200 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:border-[#00FF41]/30 dark:bg-black dark:hover:border-[#00FF41] dark:focus-visible:ring-[#00FF41]"
             >
-              <div className={`w-6 h-6 rounded-lg flex items-center justify-center shrink-0 ${tool.color}`}>
+              <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${tool.color}`}>
                 <i className={`${tool.icon} text-xs`} />
               </div>
-              <span className="text-xs font-medium text-gray-700 dark:text-white/80 group-hover:text-sky-600 dark:group-hover:text-sky-400 transition-colors">
+              <span className="text-xs font-semibold text-stone-800 transition-colors group-hover:text-orange-700 dark:text-[#00FF41]">
                 {tool.title}
               </span>
-              <span className="text-[10px] bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 px-1.5 py-0.5 rounded-full font-semibold">
-                ×{tool.runCount}
+              <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
+                x{tool.runCount}
               </span>
             </Link>
           ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }
 
@@ -170,7 +275,7 @@ function ToolMarquee({ tools }) {
 
   return (
     <div
-      className="overflow-hidden py-3 space-y-2.5 border-b border-gray-100 dark:border-white/10 px-0"
+      className="space-y-2.5 overflow-hidden py-4"
       style={{
         maskImage: "linear-gradient(to right, transparent 0%, black 7%, black 93%, transparent 100%)",
         WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 7%, black 93%, transparent 100%)",
@@ -194,9 +299,9 @@ function ToolMarquee({ tools }) {
                 key={i}
                 href={tool.href}
                 tabIndex={-1}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap shrink-0 ${tool.color} hover:shadow-sm hover:scale-105 transition-all duration-200`}
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/60 bg-white/75 px-3 py-1.5 text-xs font-semibold text-stone-700 shadow-sm transition duration-200 hover:scale-105 hover:border-orange-200 hover:text-orange-700 dark:border-[#00FF41]/25 dark:bg-[#00FF41]/5 dark:text-[#00FF41]"
               >
-                <i className={`${tool.icon} text-xs`} />
+                <i className={`${tool.icon} text-xs text-orange-600 dark:text-[#00FF41]`} />
                 {tool.title}
               </Link>
             ))}
@@ -207,54 +312,43 @@ function ToolMarquee({ tools }) {
   );
 }
 
-const STATUS_DOT = {
-  green:  "bg-green-400",
-  yellow: "bg-amber-400",
-  red:    "bg-red-400",
-};
-const STATUS_TITLE = {
-  green:  "Working",
-  yellow: "Partial / may be blocked",
-  red:    "Blocked by bot detection",
-};
-
 // ── Tool card ─────────────────────────────────────────────────────────────────
 function ToolCard({ tool, t }) {
+  const status = STATUS_META[tool.status] || STATUS_META.green;
+  const accent = categoryAccent[tool.category] || "from-stone-500 to-stone-700";
+  const name = toolTitle(t, tool.href, tool.title);
+
   return (
     <Link
       href={tool.href}
-      className="group flex items-center gap-3 p-3 rounded-xl border border-gray-100 dark:border-white/10 bg-white dark:bg-bgdark hover:border-sky-200 dark:hover:border-sky-500/30 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200"
+      className="group relative flex min-h-[118px] flex-col justify-between overflow-hidden rounded-[1.1rem] border border-stone-200 bg-white p-4 shadow-[0_14px_35px_rgba(68,45,24,0.06)] transition duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-[0_22px_55px_rgba(130,80,35,0.14)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:border-[#00FF41]/25 dark:bg-black dark:shadow-[0_0_14px_rgba(0,255,65,0.08)] dark:hover:border-[#00FF41] dark:focus-visible:ring-[#00FF41]"
+      aria-label={`Open ${name}`}
     >
-      {/* Icon circle with status dot */}
-      <div className="relative shrink-0">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tool.color}`}>
-          <i className={`${tool.icon} text-lg`} />
-        </div>
-        {tool.status && (
+      <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${accent}`} />
+      <div className="flex items-start justify-between gap-3">
+        <div className={`relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${tool.color} ring-1 ring-black/5 transition duration-300 group-hover:scale-105 dark:ring-[#00FF41]/20`}>
+          <i className={`${tool.icon} text-xl`} aria-hidden="true" />
           <span
-            className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white dark:border-bgdark ${STATUS_DOT[tool.status]}`}
-            title={STATUS_TITLE[tool.status]}
+            className={`absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white dark:border-black ${status.dot}`}
+            title={status.label}
           />
+        </div>
+        {tool.badge && (
+          <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${BADGE_COLORS[tool.badge] || "bg-stone-100 text-stone-900"}`}>
+            {tool.badge}
+          </span>
         )}
       </div>
-
-      {/* Name + category */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-gray-800 dark:text-white truncate leading-snug">
-          {toolTitle(t, tool.href, tool.title)}
+      <div className="mt-4 min-w-0">
+        <p className="truncate text-sm font-bold text-stone-950 dark:text-[#00FF41]">
+          {name}
         </p>
-        <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{tool.category}</p>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <span className="text-[11px] font-medium text-stone-500 dark:text-[#00FF41]/60">{tool.category}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ring-1 ${status.chip}`}>{status.label}</span>
+        </div>
       </div>
-
-      {/* Version badge */}
-      {tool.badge && (
-        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold text-white shrink-0 ${BADGE_COLORS[tool.badge] || "bg-gray-400"}`}>
-          {tool.badge}
-        </span>
-      )}
-
-      {/* Arrow — slides in on hover */}
-      <i className="ri-arrow-right-s-line text-gray-300 dark:text-gray-600 group-hover:text-sky-500 group-hover:translate-x-0.5 transition-all text-base shrink-0" />
+      <i className="ri-arrow-right-up-line absolute bottom-4 right-4 text-lg text-stone-300 transition duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-orange-600 dark:text-[#00FF41]/40 dark:group-hover:text-[#00FF41]" aria-hidden="true" />
     </Link>
   );
 }
@@ -264,6 +358,7 @@ export default function HomePage() {
   const { t } = useLanguage();
   const [stats, setStats] = useState({ today: 0, total: 0, topTool: null });
   const [activeCat, setActiveCat] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [recentTools, setRecentTools] = useState([]);
 
   const [isAIModalOpen, setIsAIModalOpen] = useState(false);
@@ -279,29 +374,26 @@ export default function HomePage() {
   // ── Session Caching: Hydrate chat log on mount ──
   useEffect(() => {
     if (typeof window !== "undefined") {
-      try {
-        const cached = localStorage.getItem("sg_ai_chat_cache");
-        if (cached) {
-          const { timestamp, logs } = JSON.parse(cached);
-          if (Date.now() - timestamp < 360000) { // 6 minutes
-            setChatLog(logs);
-          } else {
-            localStorage.removeItem("sg_ai_chat_cache");
+      loadChatCache()
+        .then(({ value }) => {
+          if (value) {
+            const { timestamp, logs } = value;
+            if (Date.now() - timestamp < 360000) { // 6 minutes
+              setChatLog(logs);
+            } else {
+              clearChatCache();
+            }
           }
         }
-      } catch (e) {}
+      )
+        .catch(() => {});
     }
   }, []);
 
   // ── Session Caching: Save chat log continuously ──
   useEffect(() => {
     if (typeof window !== "undefined" && chatLog.length > 1) {
-      try {
-        localStorage.setItem("sg_ai_chat_cache", JSON.stringify({
-          timestamp: Date.now(),
-          logs: chatLog
-        }));
-      } catch (e) {}
+      saveChatCache(chatLog);
     }
   }, [chatLog]);
 
@@ -345,6 +437,9 @@ export default function HomePage() {
                 if (finalPayload.query && !finalPayload.urls) {
                   finalPayload.urls = [finalPayload.query];
                 }
+              }
+              if (finalPath === "/api/social_background_analysis" && finalPayload.query && !finalPayload.urls) {
+                finalPayload.urls = finalPayload.query.split(/\r?\n|,/).map((url) => url.trim()).filter(Boolean);
               }
               const scrapeRes = await axios.post(finalPath, finalPayload);
               data = Array.isArray(scrapeRes.data.data) ? scrapeRes.data.data : (Array.isArray(scrapeRes.data) ? scrapeRes.data : [scrapeRes.data]);
@@ -403,165 +498,282 @@ export default function HomePage() {
   };
 
   useEffect(() => {
-    setStats(getStats());
-    setRecentTools(getRecentlyUsedTools(tools));
+    let mounted = true;
+    async function refreshStats() {
+      const next = await getServerStats();
+      if (!mounted) return;
+      setStats(next);
+      setRecentTools(next.tools ? getRecentlyUsedToolsFromStats(tools, next.tools) : getRecentlyUsedTools(tools));
+    }
+    refreshStats();
     const id = setInterval(() => {
-      setStats(getStats());
-      setRecentTools(getRecentlyUsedTools(tools));
+      refreshStats();
     }, 10000);
-    return () => clearInterval(id);
+    return () => { mounted = false; clearInterval(id); };
   }, []);
 
-  const filtered = activeCat === "All" ? tools : tools.filter((tool) => tool.category === activeCat);
+  const categoryFiltered = activeCat === "All" ? tools : tools.filter((tool) => tool.category === activeCat);
+  const normalizedQuery = searchQuery.trim().toLowerCase();
+  const filtered = normalizedQuery
+    ? categoryFiltered.filter((tool) =>
+        `${tool.title} ${tool.category} ${tool.href}`.toLowerCase().includes(normalizedQuery)
+      )
+    : categoryFiltered;
+  const reliableTools = tools.filter((tool) => tool.status === "green").length;
+  const featuredTools = [
+    tools.find((tool) => tool.title === "Google Maps"),
+    tools.find((tool) => tool.title === "Email Scraper"),
+    tools.find((tool) => tool.title === "WA Verifier"),
+  ].filter(Boolean);
 
   return (
-    <div>
-      {/* Welcome banner */}
-      <div className="box mb-5 overflow-hidden">
-        <div className="box-body relative z-10">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h2 className="text-xl font-bold uppercase tracking-widest text-[#00FF41]">{"// INIT SEQUENCE"}</h2>
-              <p className="text-sm mt-1 text-[#00FF41]/70 font-mono tracking-wide">SYSTEM: ONLINE | STATUS: OPTIMAL</p>
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <span className="text-xs border border-[#00FF41]/50 bg-[#00FF41]/10 text-[#00FF41] px-2.5 py-1 font-bold uppercase tracking-widest shadow-[0_0_5px_rgba(0,255,65,0.3)]">BUILD_V19.0</span>
-              <span className="text-xs border border-[#00FF41]/50 bg-[#00FF41]/10 text-[#00FF41] px-2.5 py-1 font-bold uppercase tracking-widest shadow-[0_0_5px_rgba(0,255,65,0.3)]">{tools.length} MODULES</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <main className="relative overflow-hidden rounded-[1.75rem] bg-[#fff8ef] px-3 py-3 pb-24 font-sans text-stone-900 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] sm:px-5 sm:py-5 sm:pb-24 dark:bg-[#030504] dark:text-[#00FF41]">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_4%,rgba(248,178,93,0.34),transparent_28%),linear-gradient(135deg,rgba(255,255,255,0.72),transparent_45%)] dark:bg-none" />
+      <div className="relative space-y-5">
+        <section className="overflow-hidden rounded-[1.5rem] border border-orange-100 bg-white/80 shadow-[0_24px_70px_rgba(119,72,32,0.12)] backdrop-blur dark:border-[#00FF41]/35 dark:bg-black dark:shadow-[0_0_26px_rgba(0,255,65,0.12)]">
+          <div className="grid gap-6 p-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)] lg:p-7">
+            <div className="flex min-w-0 flex-col justify-between gap-6">
+              <div>
+                <div className="mb-4 flex flex-wrap items-center gap-2">
+                  <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-bold text-orange-800 ring-1 ring-orange-200 dark:bg-[#00FF41]/10 dark:text-[#00FF41] dark:ring-[#00FF41]/30">
+                    BUILD V19.0
+                  </span>
+                  <span className="rounded-full bg-stone-100 px-3 py-1 text-xs font-bold text-stone-700 ring-1 ring-stone-200 dark:bg-[#00FF41]/10 dark:text-[#00FF41] dark:ring-[#00FF41]/30">
+                    {tools.length} tools ready
+                  </span>
+                </div>
+                <h2 className="max-w-3xl text-3xl font-black leading-tight text-stone-950 sm:text-4xl lg:text-5xl dark:text-[#00FF41]">
+                  Discover the right scraper before momentum cools.
+                </h2>
+                <p className="mt-4 max-w-2xl text-sm leading-6 text-stone-600 sm:text-base dark:text-[#00FF41]/70">
+                  BubbleScraper brings lead, website, domain, ecommerce, and verification tools into one focused command surface.
+                </p>
+              </div>
 
-      {/* Live Stats */}
-      <div className="grid grid-cols-12 gap-5 mb-5">
-        {[
-          { label: t("home.runs_today"),      value: stats.today,            icon: "ri-play-circle-line", color: "sky" },
-          { label: t("home.total_runs"),       value: stats.total,            icon: "ri-database-line",    color: "green" },
-          { label: t("home.top_tool"),         value: stats.topTool || "—",   icon: "ri-trophy-line",      color: "amber" },
-          { label: t("home.tools_available"),  value: tools.length,           icon: "ri-tools-line",       color: "purple" },
-        ].map((s) => (
-          <div key={s.label} className="col-span-12 sm:col-span-6 xl:col-span-3">
-            <div className="box">
-              <div className="box-body">
-                <div className="flex items-center gap-3">
-                  <div className={`w-11 h-11 rounded-xl bg-${s.color}-50 dark:bg-${s.color}-900/20 flex items-center justify-center`}>
-                    <i className={`${s.icon} text-${s.color}-500 text-xl`} />
+              <div className="max-w-3xl rounded-[1.25rem] border border-stone-200 bg-white p-2 shadow-[0_16px_40px_rgba(83,58,35,0.10)] dark:border-[#00FF41]/30 dark:bg-[#020502]">
+                <label htmlFor="tool-search" className="sr-only">Search BubbleScraper tools</label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <div className="flex min-h-12 flex-1 items-center gap-3 rounded-2xl bg-[#fff8ef] px-4 ring-1 ring-orange-100 focus-within:ring-2 focus-within:ring-orange-500 dark:bg-black dark:ring-[#00FF41]/30 dark:focus-within:ring-[#00FF41]">
+                    <i className="ri-search-line text-lg text-orange-600 dark:text-[#00FF41]" aria-hidden="true" />
+                    <input
+                      id="tool-search"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Search tools, channels, or data types"
+                      className="w-full bg-transparent text-sm font-medium text-stone-900 placeholder:text-stone-400 focus:outline-none dark:text-[#00FF41] dark:placeholder:text-[#00FF41]/35"
+                    />
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">{s.label}</p>
-                    <p className="text-lg font-bold text-defaulttextcolor dark:text-white truncate max-w-[140px]">{s.value}</p>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsAIModalOpen(true)}
+                    className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-stone-950 px-5 text-sm font-bold text-white shadow-[0_14px_30px_rgba(41,30,20,0.22)] transition duration-200 hover:-translate-y-0.5 hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:bg-[#00FF41] dark:text-black dark:hover:bg-white dark:focus-visible:ring-[#00FF41]"
+                  >
+                    <i className="ri-sparkling-2-line text-base" aria-hidden="true" />
+                    Ask AI
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-2" aria-label="Quick searches">
+                {quickStarts.map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery(item.query);
+                      setActiveCat("All");
+                    }}
+                    className="min-h-10 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-bold text-orange-800 transition hover:-translate-y-0.5 hover:bg-orange-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:border-[#00FF41]/30 dark:bg-[#00FF41]/10 dark:text-[#00FF41] dark:focus-visible:ring-[#00FF41]"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <aside className="rounded-[1.35rem] border border-stone-200 bg-[#1f1814] p-4 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.10)] dark:border-[#00FF41]/40 dark:bg-[#020502]" aria-label="Recommended tools">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase text-orange-200 dark:text-[#00FF41]/70">Starter stack</p>
+                  <h2 className="text-lg font-black dark:text-[#00FF41]">Fastest paths to usable data</h2>
+                </div>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-400 text-stone-950 dark:bg-[#00FF41]">
+                  <i className="ri-compass-3-line text-xl" aria-hidden="true" />
+                </span>
+              </div>
+              <div className="space-y-2">
+                {featuredTools.map((tool) => (
+                  <Link
+                    key={tool.href}
+                    href={tool.href}
+                    className="group flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.08] px-3 py-2 transition hover:bg-white/[0.14] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 dark:border-[#00FF41]/30 dark:bg-[#00FF41]/5 dark:focus-visible:ring-[#00FF41]"
+                  >
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${tool.color}`}>
+                      <i className={tool.icon} aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-bold dark:text-[#00FF41]">{tool.title}</span>
+                      <span className="block text-xs text-orange-100/70 dark:text-[#00FF41]/60">{tool.category}</span>
+                    </span>
+                    <i className="ri-arrow-right-line text-orange-200 transition group-hover:translate-x-0.5 dark:text-[#00FF41]" aria-hidden="true" />
+                  </Link>
+                ))}
+              </div>
+            </aside>
+          </div>
+          <ToolMarquee tools={tools} />
+        </section>
+
+        <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Usage summary">
+          {[
+            { label: t("home.runs_today"), value: stats.today, icon: "ri-play-circle-line", tone: "text-orange-700 bg-orange-100" },
+            { label: t("home.total_runs"), value: stats.total, icon: "ri-database-line", tone: "text-emerald-700 bg-emerald-100" },
+            { label: t("home.top_tool"), value: stats.topTool || "None yet", icon: "ri-trophy-line", tone: "text-amber-700 bg-amber-100" },
+            { label: t("home.tools_available"), value: `${reliableTools}/${tools.length} reliable`, icon: "ri-tools-line", tone: "text-sky-700 bg-sky-100" },
+          ].map((s) => (
+            <div key={s.label} className="rounded-[1.1rem] border border-white/80 bg-white/[0.82] p-4 shadow-[0_16px_40px_rgba(91,60,31,0.07)] backdrop-blur dark:border-[#00FF41]/25 dark:bg-black">
+              <div className="flex items-center gap-3">
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${s.tone} dark:bg-[#00FF41]/10 dark:text-[#00FF41]`}>
+                  <i className={`${s.icon} text-lg`} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-stone-500 dark:text-[#00FF41]/60">{s.label}</p>
+                  <p className="truncate text-base font-black text-stone-950 dark:text-[#00FF41]">{s.value}</p>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </section>
 
-      {/* Recently used strip — only visible after first run */}
       <RecentlyUsed tools={recentTools} />
 
-      {/* All Tools */}
-      <div className="box">
-        {/* Header with category filter */}
-        <div className="box-header flex-wrap gap-3 py-3">
-          <h5 className="box-title shrink-0">
-            {t("home.all_tools")}
-            <span className="ml-2 text-gray-400 dark:text-gray-500 font-normal text-sm">
-              ({filtered.length}{activeCat !== "All" ? ` / ${tools.length}` : ""})
-            </span>
-          </h5>
-          <div className="flex flex-wrap gap-1.5">
+        <section className="rounded-[1.35rem] border border-orange-100 bg-white/[0.86] p-4 shadow-[0_22px_60px_rgba(118,74,36,0.10)] backdrop-blur dark:border-[#00FF41]/30 dark:bg-[#020502]">
+          <div className="mb-4 flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase text-orange-700 dark:text-[#00FF41]/70">Tool library</p>
+              <h2 className="text-2xl font-black text-stone-950 dark:text-[#00FF41]">
+                {t("home.all_tools")}
+                <span className="ml-2 text-sm font-semibold text-stone-500 dark:text-[#00FF41]/60">
+                  {filtered.length}{activeCat !== "All" ? ` / ${tools.length}` : ""} shown
+                </span>
+              </h2>
+            </div>
+            <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Filter tools by category">
             {CATEGORIES.map((c) => {
               const cnt = c === "All" ? tools.length : tools.filter((tool) => tool.category === c).length;
               return (
                 <button
                   key={c}
+                  type="button"
+                  role="tab"
+                  aria-selected={activeCat === c}
                   onClick={() => setActiveCat(c)}
-                  className={`text-xs px-2.5 py-1 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  className={`min-h-10 shrink-0 rounded-full px-3 text-xs font-bold transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:focus-visible:ring-[#00FF41] ${
                     activeCat === c
-                      ? "bg-sky-500 text-white"
-                      : "bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-gray-400 hover:bg-sky-50 dark:hover:bg-sky-900/20 hover:text-sky-600 dark:hover:text-sky-400"
+                      ? "bg-stone-950 text-white shadow-md dark:bg-[#00FF41] dark:text-black"
+                      : "border border-stone-200 bg-white text-stone-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-800 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41]/70 dark:hover:text-[#00FF41]"
                   }`}
                 >
-                  {c}{c !== "All" && ` · ${cnt}`}
+                  {c}{c !== "All" && ` ${cnt}`}
                 </button>
               );
             })}
           </div>
         </div>
 
-        {/* Live marquee — shows all tools scrolling regardless of filter */}
-        <ToolMarquee tools={tools} />
-
-        {/* Card grid — filtered by active category */}
-        <div className="box-body">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+          {filtered.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
             {filtered.map((tool) => (
               <ToolCard key={tool.href} tool={tool} t={t} />
             ))}
           </div>
-        </div>
-      </div>
+          ) : (
+            <div className="flex min-h-52 flex-col items-center justify-center rounded-[1.1rem] border border-dashed border-orange-200 bg-orange-50/70 p-6 text-center dark:border-[#00FF41]/30 dark:bg-[#00FF41]/5">
+              <i className="ri-search-eye-line mb-3 text-3xl text-orange-700 dark:text-[#00FF41]" aria-hidden="true" />
+              <h3 className="text-base font-black text-stone-950 dark:text-[#00FF41]">No matching tools</h3>
+              <p className="mt-1 max-w-sm text-sm text-stone-600 dark:text-[#00FF41]/60">Try another search term or switch back to all categories.</p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveCat("All");
+                }}
+                className="mt-4 min-h-10 rounded-full bg-stone-950 px-4 text-xs font-bold text-white transition hover:bg-orange-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:bg-[#00FF41] dark:text-black"
+              >
+                Reset discovery
+              </button>
+            </div>
+          )}
+        </section>
 
       {/* Floating AI Mode Button */}
-      <div className="fixed bottom-6 right-6 z-50 animate-bounce">
+      <div className="fixed bottom-5 right-5 z-50 hidden sm:block sm:bottom-6 sm:right-6">
         <button
           onClick={() => setIsAIModalOpen(true)}
-          className="flex items-center justify-center px-4 h-12 bg-black border border-[#00FF41] shadow-[0_0_20px_rgba(0,255,65,0.6)] hover:-translate-y-1 hover:bg-[#00FF41] hover:text-black hover:shadow-[0_0_30px_#00FF41] text-[#00FF41] transition-all duration-300 group rounded-none"
+          className="bs-primary-action group flex min-h-12 items-center justify-center gap-2 rounded-full border px-4 text-sm font-bold shadow-[0_18px_45px_rgba(40,29,20,0.28)] transition duration-300 hover:-translate-y-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 dark:shadow-[0_0_20px_rgba(0,255,65,0.45)]"
+          aria-label="Open AI assistant"
         >
-          <span className="font-bold font-mono tracking-widest lowercase">npm start ai</span>
-          <span className="animate-pulse ml-1 font-mono hover:text-black">_</span>
+          <i className="ri-robot-2-line text-base" aria-hidden="true" />
+          <span className="hidden sm:inline">Ask AI</span>
         </button>
       </div>
 
       {/* Floating AI Modal Overlay */}
       {isAIModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-black w-full max-w-5xl h-[85vh] rounded-none shadow-[0_0_50px_rgba(0,255,65,0.3)] flex flex-col overflow-hidden border border-[#00FF41]">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/75 p-3 backdrop-blur-sm sm:p-4">
+          <div
+            className="flex h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-[1.25rem] border border-orange-200 bg-[#120f0c] shadow-[0_30px_90px_rgba(0,0,0,0.45)] dark:border-[#00FF41] dark:bg-black dark:shadow-[0_0_50px_rgba(0,255,65,0.25)]"
+            role="dialog"
+            aria-modal="true"
+            aria-label="AI command assistant"
+          >
             
             {/* Header */}
-            <div className="px-4 py-2 border-b border-[#00FF41] bg-[#00FF41]/10 flex justify-between items-center shrink-0">
-               <div className="font-bold text-[#00FF41] tracking-widest uppercase text-sm" style={{ textShadow: "0 0 5px #00FF41" }}>
-                  root@ai-router:~#
+            <div className="flex shrink-0 items-center justify-between gap-3 border-b border-orange-900/50 bg-[#1d1712] px-4 py-3 dark:border-[#00FF41] dark:bg-[#00FF41]/10">
+               <div>
+                 <div className="text-sm font-black text-orange-100 dark:text-[#00FF41]">
+                    AI command assistant
+                 </div>
+                 <p className="text-xs text-orange-200/60 dark:text-[#00FF41]/60">Route natural language into scraper actions</p>
                </div>
               <div className="flex items-center gap-3">
                 <button
                   onClick={() => {
                     setChatLog([{ role: "system", content: "Terminal Refreshed. Type your instruction to begin." }]);
-                    localStorage.removeItem("sg_ai_chat_cache");
+                    clearChatCache();
                   }}
-                  className="text-xs px-2 py-0.5 border border-[#00FF41] text-[#00FF41] hover:bg-[#00FF41] hover:text-black transition-colors lowercase"
+                  className="min-h-9 rounded-full border border-orange-300/40 px-3 text-xs font-bold text-orange-100 transition hover:bg-orange-200 hover:text-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 dark:border-[#00FF41] dark:text-[#00FF41] dark:hover:bg-[#00FF41] dark:hover:text-black"
                 >
-                  [clear_session]
+                  Clear
                 </button>
                 <button
                   onClick={() => setIsAIModalOpen(false)}
-                  className="w-6 h-6 flex items-center justify-center text-[#00FF41] hover:bg-[#00FF41] hover:text-black transition-colors border border-[#00FF41] font-bold"
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-orange-300/40 text-orange-100 transition hover:bg-orange-200 hover:text-stone-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 dark:border-[#00FF41] dark:text-[#00FF41] dark:hover:bg-[#00FF41] dark:hover:text-black"
+                  aria-label="Close AI assistant"
                 >
-                  X
+                  <i className="ri-close-line text-lg" aria-hidden="true" />
                 </button>
               </div>
             </div>
 
             {/* Content Body (Chat Log) */}
-            <div className="flex-1 p-6 flex flex-col overflow-hidden bg-black text-[#00FF41]">
-              <div className="flex-1 overflow-y-auto mb-4 space-y-4 pr-2">
+            <div className="flex flex-1 flex-col overflow-hidden bg-[#120f0c] p-4 text-orange-50 sm:p-6 dark:bg-black dark:text-[#00FF41]">
+              <div className="mb-4 flex-1 space-y-4 overflow-y-auto pr-2">
                 {chatLog.map((msg, idx) => (
                   <div key={idx} className="flex flex-col">
                     {msg.role === "user" && (
-                      <div className="mb-1 text-[#00FF41]/70 font-mono text-xs">root@user:~# <span className="text-[#00FF41] text-sm break-words">{msg.content}</span></div>
+                      <div className="mb-1 text-xs font-semibold text-orange-200/70 dark:text-[#00FF41]/70">You <span className="text-sm text-orange-50 dark:text-[#00FF41] break-words">{msg.content}</span></div>
                     )}
                     {msg.role === "assistant" && (
-                      <div className="border-l-2 border-[#00FF41]/50 pl-3 py-1 font-mono text-[#00FF41] whitespace-pre-wrap">{msg.content}</div>
+                      <div className="whitespace-pre-wrap rounded-2xl border border-orange-200/10 bg-white/5 px-4 py-3 text-sm leading-6 text-orange-50 dark:border-[#00FF41]/30 dark:text-[#00FF41]">{msg.content}</div>
                     )}
                     {msg.role === "system" && (
-                      <div className="font-bold uppercase tracking-wide text-xs text-[#00FF41]/80 mt-2 mb-2">
-                        {msg.content.includes("[ERROR]") ? <span className="text-red-500">{msg.content}</span> : `// ${msg.content}`}
+                      <div className="mb-2 mt-2 text-xs font-bold uppercase text-orange-200/70 dark:text-[#00FF41]/80">
+                        {msg.content.includes("[ERROR]") ? <span className="text-red-400">{msg.content}</span> : msg.content}
                       </div>
                     )}
                     {msg.results && (
-                      <div className="mt-2 text-left w-full h-[400px] border border-[#00FF41]/40 flex flex-col bg-black">
+                      <div className="mt-2 flex h-[400px] w-full flex-col border border-orange-200/20 bg-black text-left dark:border-[#00FF41]/40">
                          <ResultsTable
                           title="AI Sourced Lead Data"
                           rows={msg.results}
@@ -576,28 +788,29 @@ export default function HomePage() {
                 ))}
                 
                 {aiExecutingRoute && (
-                  <div className="font-bold uppercase tracking-wide text-xs text-sky-400 mt-2 mb-2 flex items-center gap-2">
-                     <span className="w-3 h-3 border border-sky-400 border-t-transparent rounded-full animate-spin"></span>
-                     // EXTRACTING DIRECTORY: {aiExecutingRoute}
+                  <div className="mb-2 mt-2 flex items-center gap-2 text-xs font-bold uppercase text-sky-300">
+                     <span className="h-3 w-3 animate-spin rounded-full border border-sky-300 border-t-transparent"></span>
+                     Extracting directory: {aiExecutingRoute}
                   </div>
                 )}
                 {aiLoading && !aiExecutingRoute && (
-                  <div className="font-bold uppercase tracking-wide text-xs text-yellow-500 mt-2 flex items-center gap-2">
-                    <span className="w-3 h-3 border border-yellow-500 border-t-transparent rounded-full animate-spin"></span>
-                    // ANALYZING INSTRUCTION SET
+                  <div className="mt-2 flex items-center gap-2 text-xs font-bold uppercase text-amber-300">
+                    <span className="h-3 w-3 animate-spin rounded-full border border-amber-300 border-t-transparent"></span>
+                    Analyzing instruction set
                   </div>
                 )}
                 <div ref={chatEndRef} />
               </div>
               
               {/* Terminal PROMPT Area */}
-              <div className="relative shrink-0 border-t border-[#00FF41]/40 pt-4">
-                <div className="absolute top-7 left-4 font-mono font-bold text-[#00FF41]">{">"}</div>
+              <div className="relative shrink-0 border-t border-orange-200/20 pt-4 dark:border-[#00FF41]/40">
+                <label htmlFor="ai-command-input" className="sr-only">AI instruction</label>
                 <textarea
+                  id="ai-command-input"
                   value={aiInput}
                   onChange={(e) => setAiInput(e.target.value)}
-                  placeholder="enter natural language instruction sequence..."
-                  className="w-full bg-[#030504] border border-[#00FF41]/30 px-10 py-3 text-sm focus:ring-1 focus:ring-[#00FF41] focus:border-[#00FF41] outline-none resize-none transition-all text-[#00FF41] placeholder-[#00FF41]/30 font-mono tracking-wide"
+                  placeholder="Ask for leads, domains, emails, phone checks, or a multi-step scrape..."
+                  className="w-full resize-none rounded-2xl border border-orange-200/20 bg-black/30 px-4 py-3 pr-28 text-sm text-orange-50 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-300/40 placeholder:text-orange-100/40 dark:border-[#00FF41]/30 dark:bg-[#030504] dark:text-[#00FF41] dark:placeholder:text-[#00FF41]/30 dark:focus:border-[#00FF41] dark:focus:ring-[#00FF41]/40"
                   rows={2}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -609,9 +822,9 @@ export default function HomePage() {
                 <button
                   onClick={handleAiSubmit}
                   disabled={aiLoading || !aiInput.trim()}
-                  className="absolute bottom-6 right-3 bg-[#00FF41]/10 border border-[#00FF41] text-[#00FF41] px-4 py-1 text-xs font-bold uppercase hover:bg-[#00FF41] hover:text-black shadow-[0_0_10px_rgba(0,255,65,0.4)] hover:shadow-[0_0_15px_rgba(0,255,65,0.8)] disabled:opacity-50 transition-all"
+                  className="absolute bottom-6 right-3 min-h-9 rounded-full bg-orange-200 px-4 text-xs font-black uppercase text-stone-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#00FF41] dark:hover:bg-white"
                 >
-                  {aiLoading ? "TX..." : "EXECUTE"}
+                  {aiLoading ? "Sending" : "Run"}
                 </button>
               </div>
             </div>
@@ -619,6 +832,7 @@ export default function HomePage() {
         </div>
       )}
 
-    </div>
+      </div>
+    </main>
   );
 }

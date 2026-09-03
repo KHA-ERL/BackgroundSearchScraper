@@ -2,6 +2,8 @@
 import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
+import Breadcrumbs from "@/components/Breadcrumbs";
+import RouteMeta from "@/components/RouteMeta";
 
 export default function DashboardShell({ children }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -18,7 +20,8 @@ export default function DashboardShell({ children }) {
 
       {/* Sidebar */}
       <div
-        className={`fixed lg:static inset-y-0 left-0 z-30 transform transition-transform duration-300 ease-in-out lg:transform-none ${
+        data-app-sidebar-frame
+        className={`fixed lg:relative inset-y-0 left-0 z-30 transform transition-[transform,width] duration-300 ease-in-out lg:h-screen lg:w-20 lg:shrink-0 lg:transform-none lg:hover:w-72 lg:focus-within:w-72 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
@@ -26,9 +29,11 @@ export default function DashboardShell({ children }) {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-y-auto min-w-0">
+      <div data-app-content className="flex-1 flex flex-col overflow-y-auto min-w-0">
+        <RouteMeta />
         <Header onMenuToggle={() => setSidebarOpen((o) => !o)} />
-        <main className="flex-1 p-4 md:p-6 bg-gray-50">
+        <main className="flex-1 bg-gray-50 p-4 md:p-6 lg:pl-8 dark:bg-[#0f1117]">
+          <Breadcrumbs />
           {children}
         </main>
       </div>

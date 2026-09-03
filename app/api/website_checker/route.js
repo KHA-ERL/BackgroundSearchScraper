@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import axios from "axios";
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   try {
     const { urls } = await request.json();
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
@@ -58,4 +57,4 @@ export const POST = requireLicense(async (request) => {
     console.error("Website checker error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
-});
+}

@@ -1,14 +1,91 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { chromium } from "../_chromium.js";
+import {
+  deleteBrowserSession,
+  getBrowserSession,
+  getCache,
+  getUserKey,
+  isDatabaseConfigured,
+  setBrowserSession,
+  setCache,
+} from "../../../lib/server/supabaseRest";
 import fs from "fs";
 import path from "path";
 
 const SESSION_FILE = path.resolve(process.cwd(), "..", "data", "sessions", "instagram.json");
+const CACHE_DIR = path.resolve(process.cwd(), "..", "data", "instagram_data");
+const PROVIDER = "instagram";
+
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) return null;
+  return JSON.parse(fs.readFileSync(filePath, "utf-8"));
+}
+
+async function readStoredSession(userKey) {
+  if (isDatabaseConfigured()) {
+    try {
+      const session = await getBrowserSession(PROVIDER, userKey);
+      if (session) return session;
+    } catch (error) {
+      console.warn("Instagram DB session read failed; falling back to local file.", error.message);
+    }
+  }
+  return readJsonFile(SESSION_FILE);
+}
+
+async function writeStoredSession(userKey, storageState) {
+  if (isDatabaseConfigured()) {
+    try {
+      await setBrowserSession(PROVIDER, storageState, userKey);
+      return;
+    } catch (error) {
+      console.warn("Instagram DB session write failed; falling back to local file.", error.message);
+    }
+  }
+  fs.mkdirSync(path.dirname(SESSION_FILE), { recursive: true });
+  fs.writeFileSync(SESSION_FILE, JSON.stringify(storageState));
+}
+
+async function clearStoredSession(userKey) {
+  if (isDatabaseConfigured()) {
+    try {
+      await deleteBrowserSession(PROVIDER, userKey);
+      return;
+    } catch (error) {
+      console.warn("Instagram DB session delete failed; falling back to local file.", error.message);
+    }
+  }
+  if (fs.existsSync(SESSION_FILE)) fs.unlinkSync(SESSION_FILE);
+}
+
+async function readStoredCache(cacheKey, cacheFile) {
+  if (isDatabaseConfigured()) {
+    try {
+      const cached = await getCache("instagram_profile", cacheKey);
+      if (cached) return cached;
+    } catch (error) {
+      console.warn("Instagram DB cache read failed; falling back to local file.", error.message);
+    }
+  }
+  return readJsonFile(cacheFile);
+}
+
+async function writeStoredCache(cacheKey, cacheFile, payload) {
+  if (isDatabaseConfigured()) {
+    try {
+      await setCache("instagram_profile", cacheKey, payload, 604800);
+      return;
+    } catch (error) {
+      console.warn("Instagram DB cache write failed; falling back to local file.", error.message);
+    }
+  }
+  fs.mkdirSync(path.dirname(cacheFile), { recursive: true });
+  fs.writeFileSync(cacheFile, JSON.stringify(payload, null, 2));
+}
 
 // Launch a VISIBLE browser so the user can log in manually.
 // Blocks until login is detected (up to 2 minutes), then saves the session.
-async function doLoginFlow() {
+async function doLoginFlow(userKey) {
   const browser = await chromium.launch({ headless: false });
   const context = await browser.newContext({
     userAgent:
@@ -38,8 +115,7 @@ async function doLoginFlow() {
 
     // Save session (cookies + localStorage)
     const storageState = await context.storageState();
-    fs.mkdirSync(path.dirname(SESSION_FILE), { recursive: true });
-    fs.writeFileSync(SESSION_FILE, JSON.stringify(storageState));
+    await writeStoredSession(userKey, storageState);
     return true;
   } finally {
     await browser.close();
@@ -55,9 +131,10 @@ function isLoginPage(url) {
   );
 }
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
+    const userKey = getUserKey(request);
     const { url, query } = await request.json();
     if (!url)
       return NextResponse.json({ error: "Instagram URL is required" }, { status: 400 });
@@ -68,27 +145,30 @@ export const POST = requireLicense(async (request) => {
 
     // Cache check
     const safeName = (query || url).replace(/[^a-zA-Z0-9]/g, "_").toLowerCase();
-    const cacheDir = path.resolve(process.cwd(), "..", "data", "instagram_data");
-    const cacheFile = path.join(cacheDir, `${safeName}.json`);
-    if (fs.existsSync(cacheFile)) {
-      return NextResponse.json(JSON.parse(fs.readFileSync(cacheFile, "utf-8")));
+    const cacheFile = path.join(CACHE_DIR, `${safeName}.json`);
+    const cached = await readStoredCache(safeName, cacheFile);
+    if (cached) {
+      return NextResponse.json(cached);
     }
 
     // ── Ensure we have a valid session ────────────────────────────────────
-    if (!fs.existsSync(SESSION_FILE)) {
+    let storageState = await readStoredSession(userKey);
+    if (!storageState) {
       // No session saved — open visible browser for user to log in
       try {
-        await doLoginFlow();
+        await doLoginFlow(userKey);
       } catch (loginErr) {
         return NextResponse.json(
           { error: "Login timed out or was cancelled. Please try again and log in within 2 minutes." },
           { status: 401 }
         );
       }
+      storageState = await readStoredSession(userKey);
     }
 
-    // Load saved session
-    const storageState = JSON.parse(fs.readFileSync(SESSION_FILE, "utf-8"));
+    if (!storageState) {
+      return NextResponse.json({ error: "Unable to load Instagram session after login." }, { status: 401 });
+    }
 
     // ── Scrape with saved session ─────────────────────────────────────────
     browser = await chromium.launch({ headless: true });
@@ -109,9 +189,9 @@ export const POST = requireLicense(async (request) => {
       await browser.close();
       browser = null;
       // Clear expired session and ask user to re-login
-      fs.unlinkSync(SESSION_FILE);
+      await clearStoredSession(userKey);
       try {
-        await doLoginFlow();
+        await doLoginFlow(userKey);
       } catch {
         return NextResponse.json(
           { error: "Session expired. Login timed out. Please try again." },
@@ -119,7 +199,10 @@ export const POST = requireLicense(async (request) => {
         );
       }
       // Re-launch with fresh session
-      const freshState = JSON.parse(fs.readFileSync(SESSION_FILE, "utf-8"));
+      const freshState = await readStoredSession(userKey);
+      if (!freshState) {
+        return NextResponse.json({ error: "Unable to reload Instagram session after login." }, { status: 401 });
+      }
       browser = await chromium.launch({ headless: true });
       const ctx2 = await browser.newContext({
         storageState: freshState,
@@ -200,8 +283,7 @@ export const POST = requireLicense(async (request) => {
     browser = null;
 
     if (data.profile_name !== "N/A") {
-      fs.mkdirSync(cacheDir, { recursive: true });
-      fs.writeFileSync(cacheFile, JSON.stringify(data, null, 2));
+      await writeStoredCache(safeName, cacheFile, data);
     }
 
     return NextResponse.json(data);
@@ -211,4 +293,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

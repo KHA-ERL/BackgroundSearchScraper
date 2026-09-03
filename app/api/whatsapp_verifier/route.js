@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { chromium } from "../_chromium.js";
 
 /**
  * WhatsApp Business Verifier — distinguishes regular WhatsApp from WhatsApp Business accounts.
  * Uses the WhatsApp Business API catalog/profile endpoint as a signal.
  */
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const { phones } = await request.json();
@@ -93,4 +92,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

@@ -38,6 +38,7 @@ const nav = [
     key: "cat.social_media",
     items: [
       { title: "Social Media Scraper", href: "/dashboard/social-media-scraper", icon: "ri-share-line", badge: "v14" },
+      { title: "Social Background Analysis", href: "/dashboard/social-background-analysis", icon: "ri-user-search-line", badge: "v19" },
     ],
   },
   {
@@ -140,6 +141,7 @@ const BADGE_COLORS = {
   v16: "bg-teal-100 text-teal-600",
   v17: "bg-orange-100 text-orange-600",
   v18: "bg-rose-100 text-rose-600",
+  v19: "bg-purple-100 text-purple-600",
   NEW: "bg-sky-100 text-sky-600",
 };
 
@@ -267,22 +269,27 @@ export default function Sidebar({ onClose }) {
   const [todayRuns, setTodayRuns] = useState({});
   const { t } = useLanguage();
 
-  // Load today's run counts from localStorage (client-only)
   useEffect(() => {
-    try {
-      const key = `sg_stats_${new Date().toISOString().slice(0, 10)}`;
-      const stats = JSON.parse(localStorage.getItem(key) || "{}");
-      setTodayRuns(stats.tools || {});
-    } catch (_) {}
-    // Refresh every 30s in case another tab runs a tool
-    const id = setInterval(() => {
+    let mounted = true;
+    async function refreshRuns() {
       try {
-        const key = `sg_stats_${new Date().toISOString().slice(0, 10)}`;
-        const stats = JSON.parse(localStorage.getItem(key) || "{}");
-        setTodayRuns(stats.tools || {});
-      } catch (_) {}
+        const res = await fetch("/api/request_logs/", { cache: "no-store" });
+        if (!res.ok) throw new Error("Stats unavailable");
+        const stats = await res.json();
+        if (mounted) setTodayRuns(stats.tools || {});
+      } catch (_) {
+        try {
+          const key = `sg_stats_${new Date().toISOString().slice(0, 10)}`;
+          const stats = JSON.parse(localStorage.getItem(key) || "{}");
+          if (mounted) setTodayRuns(stats.tools || {});
+        } catch (_) {}
+      }
+    }
+    refreshRuns();
+    const id = setInterval(() => {
+      refreshRuns();
     }, 30000);
-    return () => clearInterval(id);
+    return () => { mounted = false; clearInterval(id); };
   }, []);
 
   // Global Cmd+K / Ctrl+K shortcut
@@ -313,14 +320,19 @@ export default function Sidebar({ onClose }) {
     <>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
 
-      <aside className="w-64 shrink-0 bg-white dark:bg-bgdark2 border-r border-gray-200 dark:border-white/10 h-screen overflow-y-auto flex flex-col">
-        <div className="px-5 py-4 border-b border-[#00FF41]/40 flex items-center justify-between">
-          <Link href="/dashboard/home" className="text-sm font-bold text-[#00FF41] flex items-center gap-2 uppercase tracking-wide">
-            <i className="ri-terminal-box-line" />
-            <span>root@bubble:~#</span>
+      <aside data-app-sidebar className="group/sidebar w-64 shrink-0 overflow-x-hidden border-r border-orange-100 bg-[#fff8ef] h-screen overflow-y-auto flex flex-col shadow-[12px_0_35px_rgba(104,62,30,0.06)] transition-[width] duration-300 lg:w-full dark:border-[#00FF41]/20 dark:bg-[#030504]">
+        <div className="px-4 py-4 border-b border-orange-100 dark:border-[#00FF41]/25 flex items-center justify-between">
+          <Link href="/dashboard/home" className="group flex items-center gap-3 rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:focus-visible:ring-[#00FF41]">
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-stone-950 text-orange-200 shadow-[0_12px_30px_rgba(43,30,18,0.18)] dark:bg-[#00FF41] dark:text-black">
+              <i className="ri-bubble-chart-line text-xl" />
+            </span>
+            <span className="min-w-0 transition-opacity duration-200 lg:opacity-0 lg:group-hover/sidebar:opacity-100 lg:group-focus-within/sidebar:opacity-100">
+              <span className="block text-sm font-black text-stone-950 dark:text-[#00FF41]">BubbleScraper</span>
+              <span className="block text-[11px] font-semibold text-orange-700/75 dark:text-[#00FF41]/60">Discovery console</span>
+            </span>
           </Link>
           {onClose && (
-            <button onClick={onClose} className="lg:hidden p-1 rounded-none text-[#00FF41]/50 hover:text-[#00FF41]">
+            <button onClick={onClose} className="lg:hidden h-9 w-9 rounded-full text-stone-500 hover:bg-orange-100 hover:text-orange-700 dark:text-[#00FF41]/60 dark:hover:bg-[#00FF41]/10 dark:hover:text-[#00FF41]" aria-label="Close menu">
               <i className="ri-close-line text-xl" />
             </button>
           )}
@@ -331,26 +343,27 @@ export default function Sidebar({ onClose }) {
           {/* Cmd+K palette trigger */}
           <button
             onClick={() => setPaletteOpen(true)}
-            className="w-full flex items-center gap-2 px-3 py-1.5 text-xs rounded-none border border-[#00FF41]/30 bg-black text-[#00FF41]/60 hover:border-[#00FF41] hover:text-[#00FF41] hover:shadow-[0_0_10px_rgba(0,255,65,0.2)] transition-all relative text-left uppercase tracking-wider"
+            className="w-full min-h-11 flex items-center justify-center gap-2 px-3 py-2 text-xs rounded-2xl border border-orange-200 bg-white text-stone-700 shadow-sm hover:border-orange-300 hover:text-orange-800 hover:shadow-md transition-all relative text-left font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 lg:group-hover/sidebar:justify-start lg:group-focus-within/sidebar:justify-start dark:border-[#00FF41]/30 dark:bg-black dark:text-[#00FF41]/70 dark:hover:border-[#00FF41] dark:hover:text-[#00FF41]"
           >
-            <span className="font-bold">{">"}</span>
-            <span className="flex-1">EXECUTE_TOOL...</span>
-            <kbd className="text-[9px] px-1 py-0.5 bg-[#00FF41] text-black font-mono shrink-0 uppercase tracking-tighter shadow-sm">⌘K</kbd>
+            <i className="ri-command-line text-orange-600 dark:text-[#00FF41]" />
+            <span className="flex-1 whitespace-nowrap lg:hidden lg:group-hover/sidebar:block lg:group-focus-within/sidebar:block">Open command palette</span>
+            <kbd className="text-[9px] px-1.5 py-0.5 rounded bg-orange-100 text-orange-800 font-mono shrink-0 shadow-sm lg:hidden lg:group-hover/sidebar:inline lg:group-focus-within/sidebar:inline dark:bg-[#00FF41] dark:text-black">⌘K</kbd>
           </button>
           {/* Inline sidebar filter */}
-          <div className="relative">
-            <i className="ri-filter-line absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs" />
+          <div className="relative lg:hidden lg:group-hover/sidebar:block lg:group-focus-within/sidebar:block">
+            <i className="ri-filter-line absolute left-3 top-1/2 -translate-y-1/2 text-orange-500 text-xs dark:text-[#00FF41]/60" />
             <input
               type="text"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder={t("sidebar.search_tools")}
-              className="w-full pl-7 pr-3 py-1.5 text-xs rounded-lg border border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-sky-400"
+              className="w-full min-h-10 pl-8 pr-8 py-2 text-xs rounded-2xl border border-orange-100 bg-white/80 text-stone-700 placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-orange-400 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41] dark:placeholder:text-[#00FF41]/35 dark:focus:ring-[#00FF41]"
             />
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+                className="absolute right-2 top-1/2 -translate-y-1/2 flex h-6 w-6 items-center justify-center rounded-full text-stone-400 hover:bg-orange-100 hover:text-orange-700 dark:text-[#00FF41]/50 dark:hover:bg-[#00FF41]/10 dark:hover:text-[#00FF41]"
+                aria-label="Clear sidebar search"
               >
                 <i className="ri-close-line text-xs" />
               </button>
@@ -359,23 +372,24 @@ export default function Sidebar({ onClose }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto">
+        <nav className="flex-1 px-3 py-3 space-y-2 overflow-y-auto">
           {filteredNav.length === 0 && (
-            <p className="text-xs text-gray-400 dark:text-gray-500 text-center py-6">
+            <p className="text-xs text-stone-400 dark:text-[#00FF41]/50 text-center py-6">
               {t("sidebar.no_match")} &ldquo;{search}&rdquo;
             </p>
           )}
           {filteredNav.map((section) => (
-            <div key={section.label} className="mb-1">
+            <div key={section.label} className="rounded-2xl">
               <button
                 onClick={() => toggle(section.label)}
-                className="w-full flex items-center justify-between px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+                className="w-full flex items-center justify-center px-2.5 py-2 text-[11px] font-black uppercase text-stone-500 hover:text-orange-700 rounded-xl transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 lg:group-hover/sidebar:justify-between lg:group-focus-within/sidebar:justify-between dark:text-[#00FF41]/55 dark:hover:text-[#00FF41] dark:focus-visible:ring-[#00FF41]"
+                aria-expanded={!collapsed[section.label]}
               >
-                {searchQ ? section.label : t(section.key)}
-                <i className={`ri-arrow-${collapsed[section.label] ? "right" : "down"}-s-line text-xs`} />
+                <span className="truncate lg:hidden lg:group-hover/sidebar:inline lg:group-focus-within/sidebar:inline">{searchQ ? section.label : t(section.key)}</span>
+                <i className={`ri-arrow-${collapsed[section.label] ? "right" : "down"}-s-line text-xs lg:hidden lg:group-hover/sidebar:inline lg:group-focus-within/sidebar:inline`} />
               </button>
               {!collapsed[section.label] && (
-                <ul className="mt-0.5 space-y-0.5">
+                <ul className="mt-1 space-y-1">
                   {section.items.map((item) => {
                     const active = pathname === item.href || pathname === item.href + "/";
                     const runCount = todayRuns[item.title] || 0;
@@ -384,26 +398,32 @@ export default function Sidebar({ onClose }) {
                         <Link
                           href={item.href}
                           onClick={onClose}
-                          className={`flex items-center gap-2.5 px-3 py-2 rounded-none text-sm transition-all uppercase tracking-wide ${
+                          className={`group relative flex min-h-11 items-center gap-2.5 px-3 py-2 rounded-2xl text-sm transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 dark:focus-visible:ring-[#00FF41] ${
                             active
-                              ? "bg-[#00FF41] text-black font-bold shadow-[0_0_10px_rgba(0,255,65,0.4)]"
-                              : "text-[#00FF41]/70 hover:bg-[#00FF41]/10 hover:text-[#00FF41] hover:border-l-2 hover:border-[#00FF41]"
+                              ? "bg-stone-950 text-white font-bold shadow-[0_14px_30px_rgba(43,30,18,0.18)] dark:bg-[#00FF41] dark:text-black dark:shadow-[0_0_18px_rgba(0,255,65,0.30)]"
+                              : "text-stone-600 hover:bg-white hover:text-orange-800 hover:shadow-sm dark:text-[#00FF41]/70 dark:hover:bg-[#00FF41]/10 dark:hover:text-[#00FF41]"
                           }`}
                         >
-                          <i className={`${item.icon} text-base shrink-0`} />
-                          <span className="flex-1 truncate">{navItemTitle(t, item.href, item.title)}</span>
+                          <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl transition ${
+                            active
+                              ? "bg-white/12 text-orange-200 dark:bg-black/10 dark:text-black"
+                              : "bg-orange-50 text-orange-600 group-hover:bg-orange-100 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
+                          }`}>
+                            <i className={`${item.icon} text-base shrink-0`} />
+                          </span>
+                          <span className="flex-1 truncate lg:hidden lg:group-hover/sidebar:block lg:group-focus-within/sidebar:block">{navItemTitle(t, item.href, item.title)}</span>
                           {/* Today's run count */}
                           {runCount > 0 && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 min-w-[18px] text-center ${
-                              active ? "bg-white/25 text-white" : "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400"
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 min-w-[18px] text-center lg:hidden lg:group-hover/sidebar:inline-block lg:group-focus-within/sidebar:inline-block ${
+                              active ? "bg-white/20 text-white dark:bg-black/15 dark:text-black" : "bg-emerald-100 text-emerald-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
                             }`}>
                               {runCount}
                             </span>
                           )}
                           {/* Version badge */}
                           {item.badge && (
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
-                              active ? "bg-white/20 text-white" : BADGE_COLORS[item.badge] || BADGE_COLORS.NEW
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold shrink-0 lg:hidden lg:group-hover/sidebar:inline-block lg:group-focus-within/sidebar:inline-block ${
+                              active ? "bg-white/20 text-white dark:bg-black/15 dark:text-black" : BADGE_COLORS[item.badge] || BADGE_COLORS.NEW
                             }`}>
                               {item.badge}
                             </span>
@@ -419,14 +439,16 @@ export default function Sidebar({ onClose }) {
         </nav>
 
         {/* Profile */}
-        <div className="px-3 py-3 border-t border-gray-200 dark:border-white/10">
+        <div className="px-3 py-3 border-t border-orange-100 dark:border-[#00FF41]/25">
           <Link
             href="/dashboard/profile"
             onClick={onClose}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors"
+            className="flex min-h-11 items-center gap-2.5 px-3 py-2 rounded-2xl text-sm font-semibold text-stone-600 hover:bg-white hover:text-orange-800 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 dark:text-[#00FF41]/70 dark:hover:bg-[#00FF41]/10 dark:hover:text-[#00FF41] dark:focus-visible:ring-[#00FF41]"
           >
-            <i className="ri-user-line text-base" />
-            {t("sidebar.profile")}
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
+              <i className="ri-user-line text-base" />
+            </span>
+            <span className="lg:hidden lg:group-hover/sidebar:inline lg:group-focus-within/sidebar:inline">{t("sidebar.profile")}</span>
           </Link>
         </div>
       </aside>

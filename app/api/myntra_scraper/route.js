@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { stealthChromium } from "../_stealth.js";
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const { query, maxResults = 20 } = await request.json();
@@ -137,4 +136,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

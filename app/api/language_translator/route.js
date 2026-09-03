@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import https from "https";
 import dns from "dns";
 
@@ -32,7 +31,7 @@ function httpsGet(url) {
   });
 }
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   try {
     const { text, from = "auto", to } = await request.json();
 
@@ -102,4 +101,4 @@ export const POST = requireLicense(async (request) => {
     console.error("Language translator error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
-});
+}

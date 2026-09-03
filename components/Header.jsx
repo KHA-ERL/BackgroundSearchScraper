@@ -143,7 +143,7 @@ export default function Header({ onMenuToggle }) {
         {/* Profile Avatar → Profile page */}
         <button
           onClick={() => router.push("/dashboard/profile")}
-          className="w-8 h-8 rounded-full bg-sky-500 flex items-center justify-center text-white text-sm font-semibold hover:bg-sky-600 transition-colors"
+          className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center text-white text-sm font-semibold hover:bg-sky-700 transition-colors dark:bg-orange-300 dark:text-stone-950 dark:hover:bg-orange-200"
           title={t("header.profile")}
         >
           U

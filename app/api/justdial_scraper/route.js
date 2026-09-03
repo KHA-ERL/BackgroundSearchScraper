@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { stealthChromium } from "../_stealth.js";
 import fs from "fs";
 import path from "path";
@@ -69,7 +68,7 @@ async function scrapeGoogleMaps(browser, query, city, limit) {
   }
 }
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const { query, city = "India" } = await request.json();
@@ -179,4 +178,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

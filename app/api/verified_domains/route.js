@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import dns from "dns/promises";
 import axios from "axios";
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   try {
     const { domains } = await request.json();
     if (!domains || !Array.isArray(domains) || domains.length === 0) {
@@ -56,4 +55,4 @@ export const POST = requireLicense(async (request) => {
     console.error("Verified domains error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
-});
+}

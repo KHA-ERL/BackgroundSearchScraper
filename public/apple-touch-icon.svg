@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 180" role="img" aria-label="Bubble Scraper app icon">
+  <rect width="180" height="180" rx="42" fill="#fff8ef"/>
+  <circle cx="71" cy="70" r="38" fill="#fb923c"/>
+  <circle cx="111" cy="110" r="44" fill="#1f1814"/>
+  <circle cx="71" cy="70" r="18" fill="#fff8ef" opacity=".9"/>
+  <path d="M93 111h42M114 90v42" stroke="#fb923c" stroke-width="14" stroke-linecap="round"/>
+</svg>

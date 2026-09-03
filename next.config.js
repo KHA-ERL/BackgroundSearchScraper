@@ -4,6 +4,20 @@ const nextConfig = {
   reactStrictMode: true,
   trailingSlash: true,
   swcMinify: true,
+  productionBrowserSourceMaps: false,
+  poweredByHeader: false,
+  compress: true,
+  experimental: {
+    optimizePackageImports: [
+      "@mui/material",
+      "@mui/icons-material",
+      "@fortawesome/react-fontawesome",
+      "date-fns",
+      "lodash",
+      "lucide-react",
+      "react-icons",
+    ],
+  },
   basePath: "",
   assetPrefix: "",
   images: {

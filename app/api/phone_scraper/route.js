@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { chromium } from "../_chromium.js";
 
 const PHONE_REGEX = /\+?\d{1,4}?[-.\s]?\(?\d{2,5}\)?[-.\s]?\d{3,4}[-.\s]?\d{4,9}/g;
@@ -19,7 +18,7 @@ function filterPhones(raw) {
   ].map((p) => p.replace(/[\s()\-]/g, ""));
 }
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   let browser;
   try {
     const { urls } = await request.json();
@@ -64,4 +63,4 @@ export const POST = requireLicense(async (request) => {
   } finally {
     if (browser) await browser.close().catch(() => {});
   }
-});
+}

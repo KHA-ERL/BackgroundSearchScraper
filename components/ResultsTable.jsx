@@ -326,7 +326,7 @@ export default function ResultsTable({
             {!loading && totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-3 border-t border-[#00FF41]/40 bg-[#00FF41]/5 text-[#00FF41]">
                 <p className="text-xs uppercase font-bold tracking-widest">
-                  DATA_BUFFER: {(safePage - 1) * pageSize + 1} TO {Math.min(safePage * pageSize, processed.length)} // MAX: {processed.length}
+                  DATA_BUFFER: {(safePage - 1) * pageSize + 1} TO {Math.min(safePage * pageSize, processed.length)} / MAX: {processed.length}
                 </p>
                 <div className="flex items-center gap-1">
                   <button

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
 
@@ -69,7 +70,7 @@ function YouTubeResult({ result }) {
         </div>
         <div className="box-body">
           <div className="flex items-start gap-4 flex-wrap mb-4">
-            {ch.avatar && <img src={ch.avatar} alt="Channel" className="w-20 h-20 rounded-full object-cover border-2 border-red-200" onError={e => e.target.style.display = "none"} />}
+            {ch.avatar && <Image src={ch.avatar} alt={`${ch.name || "YouTube channel"} avatar`} width={80} height={80} unoptimized className="w-20 h-20 rounded-full object-cover border-2 border-red-200" onError={e => e.target.style.display = "none"} />}
             <div className="flex-1">
               <h2 className="text-xl font-bold dark:text-white">{ch.name}</h2>
               <div className="flex gap-5 mt-2 flex-wrap">
@@ -171,7 +172,7 @@ function InstagramResult({ result }) {
       <div className="box-body">
         <div className="flex items-start gap-5 flex-wrap">
           {result.profile_image && result.profile_image !== "N/A" && (
-            <img src={result.profile_image} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-pink-200" onError={e => e.target.style.display = "none"} />
+            <Image src={result.profile_image} alt={`${result.profile_name || "Instagram"} profile image`} width={96} height={96} unoptimized className="w-24 h-24 rounded-full object-cover border-2 border-pink-200" onError={e => e.target.style.display = "none"} />
           )}
           <div className="flex-1">
             <h2 className="text-xl font-bold dark:text-white">{result.profile_name}</h2>
@@ -203,7 +204,7 @@ function LinkedInResult({ result }) {
       <div className="box-body">
         <div className="flex items-start gap-4 flex-wrap mb-4">
           {result.profile_image && result.profile_image !== "N/A" && (
-            <img src={result.profile_image} alt="Profile" className="w-20 h-20 rounded object-cover border border-gray-200" onError={e => e.target.style.display = "none"} />
+            <Image src={result.profile_image} alt={`${result.profile_name || "LinkedIn"} profile image`} width={80} height={80} unoptimized className="w-20 h-20 rounded object-cover border border-gray-200" onError={e => e.target.style.display = "none"} />
           )}
           <div className="flex-1">
             <h2 className="text-xl font-bold dark:text-white">{result.profile_name}</h2>

@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
 
@@ -223,9 +224,12 @@ export default function EcommerceScraperPage() {
                     <td className="px-3 py-3 text-gray-400 text-xs">{i + 1}</td>
                     <td className="px-3 py-3">
                       {r.image && r.image !== "N/A" ? (
-                        <img
+                        <Image
                           src={r.image}
-                          alt={r.name}
+                          alt={r.name ? `${r.name} product image` : "Scraped product image"}
+                          width={48}
+                          height={48}
+                          unoptimized
                           className="w-12 h-12 object-contain rounded border border-gray-100"
                           onError={e => { e.target.style.display = "none"; }}
                         />

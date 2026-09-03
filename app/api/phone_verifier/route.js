@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
-import { requireLicense } from "../_license";
 import { parsePhoneNumberFromString, isValidPhoneNumber } from "libphonenumber-js";
 
-export const POST = requireLicense(async (request) => {
+export async function POST(request) {
   try {
     const { phones, country = "IN" } = await request.json();
     if (!phones || !Array.isArray(phones) || phones.length === 0)
@@ -60,4 +59,4 @@ export const POST = requireLicense(async (request) => {
     console.error("Phone verifier error:", err);
     return NextResponse.json({ error: "Failed to verify phones" }, { status: 500 });
   }
-});
+}

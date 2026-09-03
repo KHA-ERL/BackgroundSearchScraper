@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
 
@@ -74,7 +75,7 @@ export default function LinkedInScraperPage() {
               <div className="box-body">
                 <div className="flex items-center gap-4 mb-4">
                   {result.profile_image && result.profile_image !== "N/A" && (
-                    <img src={result.profile_image} alt="Logo" className="w-16 h-16 rounded-lg object-cover border border-gray-100" onError={(e) => e.target.style.display = "none"} />
+                    <Image src={result.profile_image} alt={`${result.profile_name || "LinkedIn"} profile image`} width={64} height={64} unoptimized className="w-16 h-16 rounded-lg object-cover border border-gray-100" onError={(e) => e.target.style.display = "none"} />
                   )}
                   <div>
                     <h2 className="text-lg font-bold dark:text-white">{result.profile_name}</h2>

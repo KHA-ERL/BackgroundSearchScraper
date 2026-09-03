@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
 
@@ -73,7 +74,7 @@ export default function InstagramScraperPage() {
           <div className="box-body">
             <div className="flex items-start gap-5 flex-wrap">
               {result.profile_image && result.profile_image !== "N/A" && (
-                <img src={result.profile_image} alt="Profile" className="w-24 h-24 rounded-full object-cover border-2 border-pink-200" onError={(e) => e.target.style.display = "none"} />
+                <Image src={result.profile_image} alt={`${result.profile_name || "Instagram"} profile image`} width={96} height={96} unoptimized className="w-24 h-24 rounded-full object-cover border-2 border-pink-200" onError={(e) => e.target.style.display = "none"} />
               )}
               <div className="flex-1">
                 <h2 className="text-xl font-bold dark:text-white">{result.profile_name}</h2>
@@ -94,7 +95,7 @@ export default function InstagramScraperPage() {
                 <h4 className="font-semibold text-sm text-gray-600 mb-2">Recent Posts</h4>
                 <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2">
                   {result.recent_posts.slice(0, 12).map((p, i) => (
-                    p.thumbnail && <img key={i} src={p.thumbnail} alt={p.alt} className="w-full aspect-square object-cover rounded-md" onError={(e) => e.target.style.display = "none"} />
+                    p.thumbnail && <Image key={i} src={p.thumbnail} alt={p.alt || `Recent Instagram post thumbnail ${i + 1}`} width={160} height={160} unoptimized className="w-full aspect-square object-cover rounded-md" onError={(e) => e.target.style.display = "none"} />
                   ))}
                 </div>
               </div>

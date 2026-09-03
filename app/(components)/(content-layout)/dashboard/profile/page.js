@@ -30,8 +30,22 @@ export default function ProfilePage() {
   // Mistral state
   const [mistralApiKey, setMistralApiKey] = useState("");
   const [mistralApiKeySet, setMistralApiKeySet] = useState(false);
+  const [mistralModel, setMistralModel] = useState("mistral-large-latest");
   const [mistralSaving, setMistralSaving] = useState(false);
   const [mistralSaved, setMistralSaved] = useState(false);
+
+  // Claude and Codex analysis provider state
+  const [claudeApiKey, setClaudeApiKey] = useState("");
+  const [claudeApiKeySet, setClaudeApiKeySet] = useState(false);
+  const [claudeModel, setClaudeModel] = useState("claude-3-5-sonnet-latest");
+  const [claudeSaving, setClaudeSaving] = useState(false);
+  const [claudeSaved, setClaudeSaved] = useState(false);
+  const [codexApiKey, setCodexApiKey] = useState("");
+  const [codexApiKeySet, setCodexApiKeySet] = useState(false);
+  const [codexModel, setCodexModel] = useState("gpt-5-codex");
+  const [codexBaseUrl, setCodexBaseUrl] = useState("https://api.openai.com/v1/responses");
+  const [codexSaving, setCodexSaving] = useState(false);
+  const [codexSaved, setCodexSaved] = useState(false);
 
   // WA Security Secret state
   const [waSecret, setWaSecret] = useState("");
@@ -57,6 +71,12 @@ export default function ProfilePage() {
         if (d.bright_data_password_set) setBdPasswordSet(true);
         if (d.listclean_api_key_set) setLcApiKeySet(true);
         if (d.mistral_api_key_set) setMistralApiKeySet(true);
+        if (d.mistral_model) setMistralModel(d.mistral_model);
+        if (d.claude_api_key_set) setClaudeApiKeySet(true);
+        if (d.claude_model) setClaudeModel(d.claude_model);
+        if (d.codex_api_key_set) setCodexApiKeySet(true);
+        if (d.codex_model) setCodexModel(d.codex_model);
+        if (d.codex_base_url) setCodexBaseUrl(d.codex_base_url);
         if (d.wa_security_secret_set) setWaSecretSet(true);
         if (d.webhook_url) setWebhookUrl(d.webhook_url);
       })
@@ -128,22 +148,65 @@ export default function ProfilePage() {
   }
 
   async function saveMistral() {
-    if (!mistralApiKey) return;
     setMistralSaving(true);
     try {
+      const body = { mistral_model: mistralModel };
+      if (mistralApiKey) body.mistral_api_key = mistralApiKey;
       const res = await fetch("/api/settings/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mistral_api_key: mistralApiKey }),
+        body: JSON.stringify(body),
       });
       if (res.ok) {
-        setMistralApiKeySet(true);
-        setMistralApiKey("");
+        if (mistralApiKey) { setMistralApiKeySet(true); setMistralApiKey(""); }
         setMistralSaved(true);
         setTimeout(() => setMistralSaved(false), 2000);
       }
     } finally {
       setMistralSaving(false);
+    }
+  }
+
+  async function saveClaude() {
+    setClaudeSaving(true);
+    try {
+      const body = { claude_model: claudeModel };
+      if (claudeApiKey) body.claude_api_key = claudeApiKey;
+      const res = await fetch("/api/settings/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        if (claudeApiKey) { setClaudeApiKeySet(true); setClaudeApiKey(""); }
+        setClaudeSaved(true);
+        setTimeout(() => setClaudeSaved(false), 2000);
+      }
+    } finally {
+      setClaudeSaving(false);
+    }
+  }
+
+  async function saveCodex() {
+    setCodexSaving(true);
+    try {
+      const body = {
+        codex_model: codexModel,
+        codex_base_url: codexBaseUrl,
+      };
+      if (codexApiKey) body.codex_api_key = codexApiKey;
+      const res = await fetch("/api/settings/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        if (codexApiKey) { setCodexApiKeySet(true); setCodexApiKey(""); }
+        setCodexSaved(true);
+        setTimeout(() => setCodexSaved(false), 2000);
+      }
+    } finally {
+      setCodexSaving(false);
     }
   }
 
@@ -523,23 +586,119 @@ export default function ProfilePage() {
                     console.mistral.ai
                   </a>
                 </p>
-                <div className="flex gap-2">
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                   <input
                     type="password"
                     value={mistralApiKey}
                     onChange={(e) => setMistralApiKey(e.target.value)}
                     placeholder={mistralApiKeySet ? "••••••••  (saved — enter new key to replace)" : "Enter Mistral API key"}
-                    className="flex-1 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
                   />
+                  <input
+                    type="text"
+                    value={mistralModel}
+                    onChange={(e) => setMistralModel(e.target.value)}
+                    placeholder="mistral-large-latest"
+                    className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    aria-label="Mistral model"
+                  />
+                </div>
+                <div className="mt-2 flex">
                   <button
                     onClick={saveMistral}
-                    disabled={mistralSaving || !mistralApiKey}
+                    disabled={mistralSaving || (!mistralApiKey && !mistralModel)}
                     className="ti-btn bg-sky-500 text-white hover:bg-sky-600 flex items-center gap-2 disabled:opacity-60 text-sm flex-shrink-0"
                   >
                     <i className={mistralSaving ? "ri-loader-4-line animate-spin" : "ri-save-line"} />
                     {mistralSaving ? t("btn.loading") : t("btn.save")}
                   </button>
                 </div>
+              </div>
+
+              {/* Claude AI Section */}
+              <div className="border-t border-gray-100 dark:border-white/10 pt-4">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Claude Analysis Key {claudeApiKeySet && <span className="text-green-500 font-semibold">(saved)</span>}
+                  {claudeSaved && (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-green-100 text-green-600 rounded font-semibold transition-opacity">Saved</span>
+                  )}
+                </label>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                  Enables Claude for Social Background Analysis. Enter a model name your Anthropic account supports.
+                </p>
+                <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                  <input
+                    type="password"
+                    value={claudeApiKey}
+                    onChange={(e) => setClaudeApiKey(e.target.value)}
+                    placeholder={claudeApiKeySet ? "••••••••  (saved — enter new key to replace)" : "Enter Claude API key"}
+                    className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  <input
+                    type="text"
+                    value={claudeModel}
+                    onChange={(e) => setClaudeModel(e.target.value)}
+                    placeholder="claude-3-5-sonnet-latest"
+                    className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                    aria-label="Claude model"
+                  />
+                </div>
+                <button
+                  onClick={saveClaude}
+                  disabled={claudeSaving || (!claudeApiKey && !claudeModel)}
+                  className="mt-2 ti-btn bg-sky-500 text-white hover:bg-sky-600 flex items-center gap-2 disabled:opacity-60 text-sm"
+                >
+                  <i className={claudeSaving ? "ri-loader-4-line animate-spin" : "ri-save-line"} />
+                  {claudeSaving ? t("btn.loading") : "Save Claude"}
+                </button>
+              </div>
+
+              {/* Codex AI Section */}
+              <div className="border-t border-gray-100 dark:border-white/10 pt-4">
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                  Codex Analysis Key {codexApiKeySet && <span className="text-green-500 font-semibold">(saved)</span>}
+                  {codexSaved && (
+                    <span className="ml-2 text-[10px] px-1.5 py-0.5 bg-green-100 text-green-600 rounded font-semibold transition-opacity">Saved</span>
+                  )}
+                </label>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mb-2">
+                  Enables Codex/OpenAI-compatible analysis for social background briefs.
+                </p>
+                <div className="grid grid-cols-1 gap-2">
+                  <input
+                    type="password"
+                    value={codexApiKey}
+                    onChange={(e) => setCodexApiKey(e.target.value)}
+                    placeholder={codexApiKeySet ? "••••••••  (saved — enter new key to replace)" : "Enter Codex/OpenAI API key"}
+                    className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                  />
+                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    <input
+                      type="text"
+                      value={codexModel}
+                      onChange={(e) => setCodexModel(e.target.value)}
+                      placeholder="gpt-5-codex"
+                      className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      aria-label="Codex model"
+                    />
+                    <input
+                      type="url"
+                      value={codexBaseUrl}
+                      onChange={(e) => setCodexBaseUrl(e.target.value)}
+                      placeholder="https://api.openai.com/v1/responses"
+                      className="border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm bg-gray-50 dark:bg-white/5 text-defaulttextcolor dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                      aria-label="Codex API base URL"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={saveCodex}
+                  disabled={codexSaving || (!codexApiKey && !codexModel && !codexBaseUrl)}
+                  className="mt-2 ti-btn bg-sky-500 text-white hover:bg-sky-600 flex items-center gap-2 disabled:opacity-60 text-sm"
+                >
+                  <i className={codexSaving ? "ri-loader-4-line animate-spin" : "ri-save-line"} />
+                  {codexSaving ? t("btn.loading") : "Save Codex"}
+                </button>
               </div>
 
               {/* WhatsApp Security Secret Section */}

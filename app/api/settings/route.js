@@ -61,6 +61,16 @@ export async function GET() {
   const mistral_api_key_set = !!(
     process.env.MISTRAL_API_KEY || file.MISTRAL_API_KEY
   );
+  const mistral_model = process.env.MISTRAL_MODEL || file.MISTRAL_MODEL || "mistral-large-latest";
+  const claude_api_key_set = !!(
+    process.env.CLAUDE_API_KEY || file.CLAUDE_API_KEY
+  );
+  const codex_api_key_set = !!(
+    process.env.CODEX_API_KEY || file.CODEX_API_KEY
+  );
+  const claude_model = process.env.CLAUDE_MODEL || file.CLAUDE_MODEL || "claude-3-5-sonnet-latest";
+  const codex_model = process.env.CODEX_MODEL || file.CODEX_MODEL || "gpt-5-codex";
+  const codex_base_url = process.env.CODEX_BASE_URL || file.CODEX_BASE_URL || "https://api.openai.com/v1/responses";
   const wa_security_secret_set = !!(
     process.env.WA_SECURITY_SECRET || file.WA_SECURITY_SECRET
   );
@@ -74,6 +84,12 @@ export async function GET() {
     bright_data_password_set,
     listclean_api_key_set,
     mistral_api_key_set,
+    mistral_model,
+    claude_api_key_set,
+    claude_model,
+    codex_api_key_set,
+    codex_model,
+    codex_base_url,
     wa_security_secret_set,
     webhook_url,
   });
@@ -123,6 +139,30 @@ export async function POST(request) {
     process.env.MISTRAL_API_KEY = body.mistral_api_key;
     file.MISTRAL_API_KEY = body.mistral_api_key;
   }
+  if (body.mistral_model !== undefined) {
+    process.env.MISTRAL_MODEL = body.mistral_model;
+    file.MISTRAL_MODEL = body.mistral_model;
+  }
+  if (body.claude_api_key !== undefined && body.claude_api_key !== "") {
+    process.env.CLAUDE_API_KEY = body.claude_api_key;
+    file.CLAUDE_API_KEY = body.claude_api_key;
+  }
+  if (body.claude_model !== undefined) {
+    process.env.CLAUDE_MODEL = body.claude_model;
+    file.CLAUDE_MODEL = body.claude_model;
+  }
+  if (body.codex_api_key !== undefined && body.codex_api_key !== "") {
+    process.env.CODEX_API_KEY = body.codex_api_key;
+    file.CODEX_API_KEY = body.codex_api_key;
+  }
+  if (body.codex_model !== undefined) {
+    process.env.CODEX_MODEL = body.codex_model;
+    file.CODEX_MODEL = body.codex_model;
+  }
+  if (body.codex_base_url !== undefined) {
+    process.env.CODEX_BASE_URL = body.codex_base_url;
+    file.CODEX_BASE_URL = body.codex_base_url;
+  }
 
   // ── WA Security Secret Key ──────────────────────────────────────────────
   if (body.wa_security_secret !== undefined && body.wa_security_secret !== "") {
@@ -145,10 +185,16 @@ export async function POST(request) {
   const bright_data_proxy =
     process.env.BRIGHT_DATA_PROXY || "http://brd.superproxy.io:22225";
   const bright_data_username = process.env.BRIGHT_DATA_USERNAME || "";
-  const bright_data_password_set = !!process.env.BRIGHT_DATA_PASSWORD;
-  const listclean_api_key_set = !!process.env.LISTCLEAN_API_KEY;
-  const mistral_api_key_set = !!process.env.MISTRAL_API_KEY;
-  const wa_security_secret_set = !!process.env.WA_SECURITY_SECRET;
+  const bright_data_password_set = !!(process.env.BRIGHT_DATA_PASSWORD || file.BRIGHT_DATA_PASSWORD);
+  const listclean_api_key_set = !!(process.env.LISTCLEAN_API_KEY || file.LISTCLEAN_API_KEY);
+  const mistral_api_key_set = !!(process.env.MISTRAL_API_KEY || file.MISTRAL_API_KEY);
+  const mistral_model = process.env.MISTRAL_MODEL || file.MISTRAL_MODEL || "mistral-large-latest";
+  const claude_api_key_set = !!(process.env.CLAUDE_API_KEY || file.CLAUDE_API_KEY);
+  const codex_api_key_set = !!(process.env.CODEX_API_KEY || file.CODEX_API_KEY);
+  const claude_model = process.env.CLAUDE_MODEL || file.CLAUDE_MODEL || "claude-3-5-sonnet-latest";
+  const codex_model = process.env.CODEX_MODEL || file.CODEX_MODEL || "gpt-5-codex";
+  const codex_base_url = process.env.CODEX_BASE_URL || file.CODEX_BASE_URL || "https://api.openai.com/v1/responses";
+  const wa_security_secret_set = !!(process.env.WA_SECURITY_SECRET || file.WA_SECURITY_SECRET);
   const webhook_url = process.env.WEBHOOK_URL || "";
 
   return NextResponse.json({
@@ -159,8 +205,13 @@ export async function POST(request) {
     bright_data_password_set,
     listclean_api_key_set,
     mistral_api_key_set,
+    mistral_model,
+    claude_api_key_set,
+    claude_model,
+    codex_api_key_set,
+    codex_model,
+    codex_base_url,
     wa_security_secret_set,
     webhook_url,
   });
 }
-

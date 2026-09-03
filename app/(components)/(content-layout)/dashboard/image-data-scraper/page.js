@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import { useState } from "react";
 import axios from "axios";
 
@@ -116,9 +117,12 @@ export default function ImageDataScraperPage() {
               {rows.map((row, i) => (
                 <div key={i} className="group relative border border-gray-100 dark:border-white/10 rounded-lg overflow-hidden bg-gray-50 dark:bg-white/5">
                   <a href={row.src} target="_blank" rel="noreferrer">
-                    <img
+                    <Image
                       src={row.src}
-                      alt={row.alt || ""}
+                      alt={row.alt || `Scraped image preview ${i + 1}`}
+                      width={240}
+                      height={160}
+                      unoptimized
                       className="w-full h-24 object-cover"
                       onError={(e) => { e.target.style.display = "none"; }}
                     />
@@ -154,7 +158,7 @@ export default function ImageDataScraperPage() {
                   <tr key={i} className="hover:bg-gray-50 dark:hover:bg-white/5">
                     <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
                     <td className="px-4 py-2">
-                      <img src={row.src} alt={row.alt || ""} className="w-12 h-12 object-cover rounded border border-gray-200" onError={(e) => { e.target.style.display = "none"; }} />
+                      <Image src={row.src} alt={row.alt || `Scraped image thumbnail ${i + 1}`} width={48} height={48} unoptimized className="w-12 h-12 object-cover rounded border border-gray-200" onError={(e) => { e.target.style.display = "none"; }} />
                     </td>
                     {columns.map((c) => (
                       <td key={c.key} className="px-4 py-3 text-sm max-w-xs truncate dark:text-white/70">
