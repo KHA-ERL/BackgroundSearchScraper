@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 
 const PORTALS = [
@@ -23,7 +23,13 @@ const SOURCE_CHIPS = [
   "Workable",
   "Recruitee",
   "Crunchbase discovery",
+  "Job Bank Canada",
+  "Underdog.io",
+  "a16z Jobs",
 ];
+
+const JOB_PROFILE_PREF_KEY = "job_application_profile";
+const JOB_PROFILE_LOCAL_KEY = "bs_job_application_profile";
 
 function uniqueCount(rows, key) {
   return new Set(rows.map((row) => row[key]).filter(Boolean)).size;
@@ -46,9 +52,97 @@ export default function JobPortalScraperPage() {
   const [alertSaving, setAlertSaving] = useState(false);
   const [alertMessage, setAlertMessage] = useState("");
   const [error, setError] = useState("");
+  const [profileName, setProfileName] = useState("");
+  const [targetTitle, setTargetTitle] = useState("");
+  const [cvText, setCvText] = useState("");
+  const [profileLinks, setProfileLinks] = useState("");
+  const [aiProvider, setAiProvider] = useState("mistral");
+  const [applicationDraft, setApplicationDraft] = useState(null);
+  const [applicationJob, setApplicationJob] = useState(null);
+  const [applicationLoading, setApplicationLoading] = useState(false);
+  const [profileLoaded, setProfileLoaded] = useState(false);
+  const [profileSavedAt, setProfileSavedAt] = useState(null);
+  const [profileStorageMode, setProfileStorageMode] = useState("local");
 
   const activePortal = PORTALS.find((p) => p.id === portal) || PORTALS[0];
   const isGlobal = portal === "global_careers";
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadProfile() {
+      try {
+        await fetch("/api/app_user/", { cache: "no-store" });
+        const res = await fetch(`/api/user_preferences/?key=${JOB_PROFILE_PREF_KEY}`, { cache: "no-store" });
+        const data = await res.json();
+        setProfileStorageMode(data.database_configured === false ? "local" : "cloud");
+        const saved = data.value || JSON.parse(localStorage.getItem(JOB_PROFILE_LOCAL_KEY) || "null");
+        if (!cancelled && saved) {
+          setProfileName(saved.profileName || "");
+          setTargetTitle(saved.targetTitle || "");
+          setCvText(saved.cvText || "");
+          setProfileLinks(saved.profileLinks || "");
+          setAiProvider(saved.aiProvider || "mistral");
+          setQuery(saved.query || "");
+          setLocationMode(saved.locationMode || "worldwide");
+          setLocation(saved.location || "");
+          setWorkType(saved.workType || "remote");
+          setFreshnessDays(saved.freshnessDays || 7);
+        }
+      } catch {
+        setProfileStorageMode("local");
+        try {
+          const saved = JSON.parse(localStorage.getItem(JOB_PROFILE_LOCAL_KEY) || "null");
+          if (!cancelled && saved) {
+            setProfileName(saved.profileName || "");
+            setTargetTitle(saved.targetTitle || "");
+            setCvText(saved.cvText || "");
+            setProfileLinks(saved.profileLinks || "");
+            setAiProvider(saved.aiProvider || "mistral");
+            setQuery(saved.query || "");
+            setLocationMode(saved.locationMode || "worldwide");
+            setLocation(saved.location || "");
+            setWorkType(saved.workType || "remote");
+            setFreshnessDays(saved.freshnessDays || 7);
+          }
+        } catch {}
+      } finally {
+        if (!cancelled) setProfileLoaded(true);
+      }
+    }
+    loadProfile();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!profileLoaded) return;
+    const value = {
+      profileName,
+      targetTitle,
+      cvText,
+      profileLinks,
+      aiProvider,
+      query,
+      locationMode,
+      location,
+      workType,
+      freshnessDays,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(JOB_PROFILE_LOCAL_KEY, JSON.stringify(value));
+    const saveTimer = setTimeout(async () => {
+      try {
+        await fetch("/api/user_preferences/", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ key: JOB_PROFILE_PREF_KEY, value }),
+        });
+        setProfileSavedAt(new Date());
+      } catch {}
+    }, 700);
+    return () => clearTimeout(saveTimer);
+  }, [profileLoaded, profileName, targetTitle, cvText, profileLinks, aiProvider, query, locationMode, location, workType, freshnessDays]);
 
   async function run(pageOverride = resultPage) {
     if (!query.trim()) {
@@ -114,6 +208,78 @@ export default function JobPortalScraperPage() {
     }
   }
 
+  function handleCvUpload(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setCvText(String(reader.result || "").slice(0, 20000));
+    reader.readAsText(file);
+  }
+
+  async function prepareApplication(job) {
+    if (!cvText.trim() && !profileLinks.trim()) {
+      setError("Add CV text, upload a text-readable CV, or add portfolio/social links before preparing an application.");
+      return;
+    }
+    setError("");
+    setApplicationLoading(true);
+    setApplicationJob(job);
+    setApplicationDraft(null);
+    try {
+      const res = await axios.post("/api/job_application", {
+        provider: aiProvider,
+        job,
+        profile: {
+          name: profileName,
+          targetTitle,
+          cvText,
+          links: profileLinks,
+        },
+      });
+      setApplicationDraft(res.data);
+    } catch (e) {
+      setError(e?.response?.data?.error || "Failed to prepare this application.");
+    } finally {
+      setApplicationLoading(false);
+    }
+  }
+
+  function downloadApplication() {
+    if (!applicationDraft?.application) return;
+    const safeTitle = `${applicationJob?.company || "company"}-${applicationJob?.title || "application"}`
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 80);
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([applicationDraft.application], { type: "text/markdown" }));
+    a.download = `${safeTitle || "application"}.md`;
+    a.click();
+  }
+
+  async function clearSavedProfile() {
+    setProfileName("");
+    setTargetTitle("");
+    setCvText("");
+    setProfileLinks("");
+    setAiProvider("mistral");
+    setQuery("");
+    setLocationMode("worldwide");
+    setLocation("");
+    setWorkType("remote");
+    setFreshnessDays(7);
+    setApplicationDraft(null);
+    setApplicationJob(null);
+    localStorage.removeItem(JOB_PROFILE_LOCAL_KEY);
+    try {
+      await fetch("/api/user_preferences/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: JOB_PROFILE_PREF_KEY, value: null }),
+      });
+    } catch {}
+    setProfileSavedAt(null);
+  }
+
   function exportCSV() {
     if (!rows.length) return;
     const headers = [
@@ -127,6 +293,10 @@ export default function JobPortalScraperPage() {
       "posted",
       "posted_age_days",
       "freshness_verified",
+      "application_score",
+      "application_priority",
+      "resume_keywords",
+      "interview_strategy",
       "source",
       "discovery_source",
       "confidence",
@@ -137,7 +307,7 @@ export default function JobPortalScraperPage() {
       headers.join(","),
       ...rows.map((r) =>
         headers
-          .map((h) => `"${(r[h] || "").toString().replace(/"/g, '""')}"`)
+          .map((h) => `"${(Array.isArray(r[h]) ? r[h].join("; ") : r[h] || "").toString().replace(/"/g, '""')}"`)
           .join(",")
       ),
     ].join("\n");
@@ -210,6 +380,91 @@ export default function JobPortalScraperPage() {
               </div>
             </div>
           ))}
+        </section>
+
+        <section className="rounded-[1.25rem] border border-stone-200 bg-white p-4 shadow-[0_18px_45px_rgba(104,62,30,0.08)] lg:p-5 dark:border-[#00FF41]/25 dark:bg-black">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase text-orange-700 dark:text-[#00FF41]/60">Candidate profile</p>
+              <h2 className="text-lg font-black text-stone-950 dark:text-[#00FF41]">Application workspace</h2>
+              <p className="mt-1 text-xs font-bold text-stone-500 dark:text-[#00FF41]/55">
+                {profileLoaded
+                  ? `${profileSavedAt ? `Saved ${profileSavedAt.toLocaleTimeString()}` : "Saved automatically"} (${profileStorageMode === "cloud" ? "per-user cloud profile" : "this browser"})`
+                  : "Loading saved profile..."}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {["mistral", "claude", "codex", "template"].map((provider) => (
+                <button
+                  key={provider}
+                  type="button"
+                  onClick={() => setAiProvider(provider)}
+                  className={`min-h-9 rounded-full border px-3 text-xs font-black capitalize transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                    aiProvider === provider
+                      ? "border-orange-500 bg-orange-100 text-orange-800 dark:border-[#00FF41] dark:bg-[#00FF41] dark:text-black"
+                      : "border-stone-200 text-stone-600 hover:border-orange-200 dark:border-[#00FF41]/25 dark:text-[#00FF41]/70"
+                  }`}
+                >
+                  {provider}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={clearSavedProfile}
+                className="min-h-9 rounded-full border border-rose-200 px-3 text-xs font-black text-rose-700 transition hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-400/40 dark:text-rose-300"
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12 md:col-span-6 xl:col-span-3">
+              <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">Name</label>
+              <input
+                className="ti-form-input min-h-11 rounded-2xl border-orange-100 bg-[#fff8ef] text-sm dark:border-[#00FF41]/25 dark:bg-black"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                placeholder="Candidate name"
+              />
+            </div>
+            <div className="col-span-12 md:col-span-6 xl:col-span-3">
+              <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">Target title</label>
+              <input
+                className="ti-form-input min-h-11 rounded-2xl border-orange-100 bg-[#fff8ef] text-sm dark:border-[#00FF41]/25 dark:bg-black"
+                value={targetTitle}
+                onChange={(e) => setTargetTitle(e.target.value)}
+                placeholder="e.g. Frontend Engineer"
+              />
+            </div>
+            <div className="col-span-12 xl:col-span-6">
+              <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">Portfolio and social links</label>
+              <input
+                className="ti-form-input min-h-11 rounded-2xl border-orange-100 bg-[#fff8ef] text-sm dark:border-[#00FF41]/25 dark:bg-black"
+                value={profileLinks}
+                onChange={(e) => setProfileLinks(e.target.value)}
+                placeholder="https://portfolio.com, LinkedIn, GitHub, X, TikTok"
+              />
+            </div>
+            <div className="col-span-12 xl:col-span-4">
+              <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">Upload CV</label>
+              <input
+                type="file"
+                accept=".txt,.md,.csv,.pdf,.doc,.docx"
+                onChange={(e) => handleCvUpload(e.target.files?.[0])}
+                className="block w-full cursor-pointer rounded-2xl border border-orange-100 bg-[#fff8ef] text-sm file:mr-3 file:min-h-11 file:border-0 file:bg-orange-100 file:px-4 file:text-sm file:font-black file:text-orange-800 dark:border-[#00FF41]/25 dark:bg-black dark:file:bg-[#00FF41] dark:file:text-black"
+              />
+            </div>
+            <div className="col-span-12 xl:col-span-8">
+              <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">CV text / profile evidence</label>
+              <textarea
+                className="ti-form-input min-h-28 rounded-2xl border-orange-100 bg-[#fff8ef] text-sm dark:border-[#00FF41]/25 dark:bg-black"
+                value={cvText}
+                onChange={(e) => setCvText(e.target.value)}
+                placeholder="Paste the CV text or verified career evidence here. The generator will not invent missing experience."
+              />
+            </div>
+          </div>
         </section>
 
         <section className="rounded-[1.25rem] border border-orange-100 bg-white p-4 shadow-[0_18px_45px_rgba(104,62,30,0.08)] lg:p-5 dark:border-[#00FF41]/25 dark:bg-black">
@@ -417,6 +672,7 @@ export default function JobPortalScraperPage() {
             {meta?.sources && (
               <span className="text-xs font-semibold text-stone-500 dark:text-[#00FF41]/55">
                 Page {meta.resultPage} of {meta.totalPages}; showing {meta.perPage} per page from {meta.total} fresh direct-source matches.
+                {meta.sourceMix && ` Mix: ${Object.entries(meta.sourceMix).map(([source, count]) => `${source} ${count}`).join(", ")}.`}
               </span>
             )}
           </div>
@@ -438,10 +694,10 @@ export default function JobPortalScraperPage() {
           </div>
           <div className="overflow-x-auto">
             {rows.length > 0 ? (
-              <table className="w-full min-w-[1100px] text-sm">
+              <table className="w-full min-w-[1320px] text-sm">
                 <thead className="bg-[#fff8ef] dark:bg-[#00FF41]/5">
                   <tr>
-                    {["#", "Role", "Company", "Location", "Type", "Source", "Confidence", "Posted", "URL"].map((h) => (
+                    {["#", "Role", "Company", "Location", "Type", "Fit", "Source", "Confidence", "Posted", "Action"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-black uppercase text-stone-500 dark:text-[#00FF41]/60">
                         {h}
                       </th>
@@ -454,7 +710,7 @@ export default function JobPortalScraperPage() {
                       <td className="px-4 py-3 text-xs font-mono text-stone-400">{i + 1}</td>
                       <td className="max-w-[260px] px-4 py-3">
                         <p className="text-sm font-black text-stone-900 dark:text-[#00FF41]">{r.title || "-"}</p>
-                        {r.skills && <p className="mt-1 truncate text-xs text-stone-500 dark:text-[#00FF41]/50">{r.skills}</p>}
+                        {r.resume_keywords?.length > 0 && <p className="mt-1 truncate text-xs text-stone-500 dark:text-[#00FF41]/50">{r.resume_keywords.slice(0, 5).join(", ")}</p>}
                       </td>
                       <td className="px-4 py-3 text-xs font-bold text-stone-700 dark:text-[#00FF41]/80">{r.company || "-"}</td>
                       <td className="max-w-[210px] px-4 py-3 text-xs text-stone-500 dark:text-[#00FF41]/60">{r.location || "-"}</td>
@@ -462,6 +718,11 @@ export default function JobPortalScraperPage() {
                         <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-black text-orange-800 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
                           {r.work_type || "not specified"}
                         </span>
+                      </td>
+                      <td className="max-w-[210px] px-4 py-3">
+                        <p className="text-sm font-black text-stone-950 dark:text-[#00FF41]">{r.application_score ?? "-"}%</p>
+                        <p className="mt-0.5 text-[11px] font-bold text-emerald-700 dark:text-[#00FF41]/70">{r.application_priority || ""}</p>
+                        {r.interview_strategy?.[0] && <p className="mt-1 line-clamp-2 text-[11px] text-stone-500 dark:text-[#00FF41]/50">{r.interview_strategy[0]}</p>}
                       </td>
                       <td className="px-4 py-3">
                         <p className="text-xs font-bold text-stone-700 dark:text-[#00FF41]/80">{r.source || "-"}</p>
@@ -475,10 +736,21 @@ export default function JobPortalScraperPage() {
                       <td className="px-4 py-3 text-xs text-stone-500 dark:text-[#00FF41]/60">{r.posted || "-"}</td>
                       <td className="px-4 py-3">
                         {r.url ? (
-                          <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center gap-1 rounded-full border border-orange-200 px-3 text-xs font-bold text-orange-700 transition hover:bg-orange-50 dark:border-[#00FF41]/30 dark:text-[#00FF41] dark:hover:bg-[#00FF41]/10">
-                            View
-                            <i className="ri-arrow-right-up-line" />
-                          </a>
+                          <div className="flex flex-col gap-2">
+                            <button
+                              type="button"
+                              onClick={() => prepareApplication(r)}
+                              disabled={applicationLoading}
+                              className="inline-flex min-h-8 items-center justify-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-3 text-xs font-black text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-50 dark:border-[#00FF41]/30 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
+                            >
+                              <i className={applicationLoading && applicationJob?.url === r.url ? "ri-loader-4-line animate-spin" : "ri-file-edit-line"} />
+                              Prepare
+                            </button>
+                            <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-8 items-center justify-center gap-1 rounded-full border border-orange-200 px-3 text-xs font-bold text-orange-700 transition hover:bg-orange-50 dark:border-[#00FF41]/30 dark:text-[#00FF41] dark:hover:bg-[#00FF41]/10">
+                              View
+                              <i className="ri-arrow-right-up-line" />
+                            </a>
+                          </div>
                         ) : (
                           <span className="text-xs text-stone-400">-</span>
                         )}
@@ -524,6 +796,46 @@ export default function JobPortalScraperPage() {
             </div>
           )}
         </section>
+
+        {(applicationLoading || applicationDraft) && (
+          <section className="rounded-[1.25rem] border border-emerald-100 bg-white p-4 shadow-[0_18px_45px_rgba(20,83,45,0.08)] dark:border-[#00FF41]/25 dark:bg-black">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <p className="text-xs font-black uppercase text-emerald-700 dark:text-[#00FF41]/60">Application pack</p>
+                <h2 className="text-lg font-black text-stone-950 dark:text-[#00FF41]">
+                  {applicationJob ? `${applicationJob.title} - ${applicationJob.company}` : "Preparing application"}
+                </h2>
+                {applicationDraft?.provider && (
+                  <p className="mt-1 text-xs font-bold text-stone-500 dark:text-[#00FF41]/55">
+                    Provider: {applicationDraft.provider}. Review before submitting.
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2">
+                {applicationDraft?.application && (
+                  <button
+                    type="button"
+                    onClick={downloadApplication}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full border border-stone-200 bg-white px-4 text-xs font-black text-stone-700 transition hover:border-emerald-200 hover:text-emerald-700 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41]"
+                  >
+                    <i className="ri-download-line" />
+                    Download
+                  </button>
+                )}
+              </div>
+            </div>
+            {applicationLoading ? (
+              <div className="flex min-h-40 items-center justify-center gap-3 text-sm font-bold text-stone-500 dark:text-[#00FF41]/60">
+                <span className="ti-spinner h-5 w-5 border-emerald-500/60" />
+                Preparing truthful tailored materials...
+              </div>
+            ) : (
+              <pre className="max-h-[520px] overflow-auto whitespace-pre-wrap rounded-2xl border border-stone-100 bg-[#fbfaf8] p-4 text-sm leading-6 text-stone-800 dark:border-[#00FF41]/20 dark:bg-[#020502] dark:text-[#00FF41]/85">
+                {applicationDraft?.application}
+              </pre>
+            )}
+          </section>
+        )}
 
         {similarRows.length > 0 && (
           <section className="rounded-[1.25rem] border border-stone-200 bg-white p-4 shadow-[0_18px_45px_rgba(104,62,30,0.08)] dark:border-[#00FF41]/25 dark:bg-black">

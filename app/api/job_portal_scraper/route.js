@@ -16,6 +16,9 @@ const SEARCH_SOURCES = [
   { id: "workable", label: "Workable" },
   { id: "recruitee", label: "Recruitee" },
   { id: "crunchbase", label: "Crunchbase discovery" },
+  { id: "jobbank", label: "Job Bank Canada" },
+  { id: "underdog", label: "Underdog.io" },
+  { id: "a16z", label: "a16z Jobs" },
 ];
 
 const DIRECT_COMPANY_BOARDS = [
@@ -59,6 +62,9 @@ const TRUSTED_DIRECT_SOURCES = new Set([
   "SmartRecruiters",
   "Workable",
   "Recruitee",
+  "Job Bank Canada",
+  "Underdog.io",
+  "a16z Jobs",
   "Company JSON-LD",
   "Company career page",
 ]);
@@ -116,12 +122,88 @@ const ROLE_FAMILIES = [
   },
 ];
 
+const COUNTRY_LOCATION_HINTS = {
+  canada: [
+    "canada",
+    "alberta",
+    "british columbia",
+    "manitoba",
+    "new brunswick",
+    "newfoundland",
+    "nova scotia",
+    "ontario",
+    "prince edward island",
+    "quebec",
+    "saskatchewan",
+    "yukon",
+    "northwest territories",
+    "nunavut",
+    " ab",
+    " bc",
+    " mb",
+    " nb",
+    " nl",
+    " ns",
+    " nt",
+    " nu",
+    " on",
+    " pe",
+    " qc",
+    " sk",
+    " yt",
+    "(ab)",
+    "(bc)",
+    "(mb)",
+    "(nb)",
+    "(nl)",
+    "(ns)",
+    "(nt)",
+    "(nu)",
+    "(on)",
+    "(pe)",
+    "(qc)",
+    "(sk)",
+    "(yt)",
+  ],
+};
+
+const COUNTRY_EXCLUSION_HINTS = [
+  "argentina",
+  "australia",
+  "bengaluru",
+  "brazil",
+  "china",
+  "france",
+  "germany",
+  "india",
+  "ireland",
+  "israel",
+  "japan",
+  "mexico",
+  "netherlands",
+  "poland",
+  "singapore",
+  "spain",
+  "tokyo",
+  "united kingdom",
+  "uk",
+];
+
 function normalizeText(value = "") {
   return value.replace(/\s+/g, " ").trim();
 }
 
 function parseJobDate(value) {
   if (!value) return null;
+  const text = String(value).trim().toLowerCase();
+  const relativeMatch = text.match(/posted\s+(?:(a|an|\d+)\s+)?(hour|day|week|month)s?\s+ago/);
+  if (relativeMatch) {
+    const amount = ["a", "an", undefined].includes(relativeMatch[1]) ? 1 : Number(relativeMatch[1]);
+    const unit = relativeMatch[2];
+    const multipliers = { hour: 3600000, day: 86400000, week: 604800000, month: 2592000000 };
+    return new Date(Date.now() - amount * multipliers[unit]);
+  }
+  if (/^new\b/.test(text)) return new Date();
   if (typeof value === "number") {
     const ms = value > 100000000000 ? value : value * 1000;
     return Number.isFinite(ms) ? new Date(ms) : null;
@@ -208,11 +290,278 @@ function matchesRole(text, query) {
   return tokens.some((token) => haystack.includes(token));
 }
 
+const ROLE_STOP_WORDS = new Set([
+  "the",
+  "and",
+  "for",
+  "with",
+  "role",
+  "roles",
+  "job",
+  "jobs",
+  "position",
+  "positions",
+  "opening",
+  "openings",
+  "remote",
+  "hybrid",
+  "onsite",
+  "office",
+]);
+
 function roleTokens(value = "") {
   return value
     .toLowerCase()
     .split(/[^a-z0-9+#.]+/)
-    .filter((token) => token.length > 2 && !["the", "and", "for", "with", "role", "jobs"].includes(token));
+    .filter((token) => token.length > 2 && !ROLE_STOP_WORDS.has(token));
+}
+
+function roleRelevanceScore(job, query) {
+  const tokens = roleTokens(query);
+  if (!tokens.length) return 100;
+
+  const phrase = normalizeText(query).toLowerCase();
+  const title = normalizeText(job.title || "").toLowerCase();
+  const skills = normalizeText(job.skills || "").toLowerCase();
+  const description = normalizeText(job.description || "").toLowerCase();
+  const searchable = `${title} ${skills} ${description}`;
+  const titleMatches = tokens.filter((token) => title.includes(token));
+  const searchableMatches = tokens.filter((token) => searchable.includes(token));
+  const titleRatio = titleMatches.length / tokens.length;
+  const searchableRatio = searchableMatches.length / tokens.length;
+
+  let score = 0;
+  if (phrase && title.includes(phrase)) score += 100;
+  else if (phrase && `${title} ${skills}`.includes(phrase)) score += 90;
+  else if (phrase && searchable.includes(phrase)) score += 55;
+
+  score += titleMatches.length * 20;
+  score += searchableMatches.length * 5;
+  if (titleRatio === 1) score += 45;
+  else if (titleRatio >= 0.67) score += 25;
+  else if (titleRatio >= 0.5) score += 12;
+  if (searchableRatio === 1) score += 10;
+
+  return score;
+}
+
+function isPrimaryRoleMatch(job, query) {
+  const tokens = roleTokens(query);
+  if (!tokens.length) return true;
+  const title = normalizeText(job.title || "").toLowerCase();
+  const phrase = normalizeText(query).toLowerCase();
+  const titleMatches = tokens.filter((token) => title.includes(token)).length;
+  const titleRatio = titleMatches / tokens.length;
+  return title.includes(phrase) || titleRatio >= (tokens.length <= 2 ? 1 : 0.67);
+}
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function applicationScore(job, query, workType, locationMode, location) {
+  const roleScore = clamp((job.role_match_score || roleRelevanceScore(job, query)) / 2.2, 0, 45);
+  const age = Number(job.posted_age_days);
+  const freshnessScore = Number.isFinite(age) ? clamp(20 - age * 2.5, 0, 20) : 0;
+  const sourceScore = job.confidence === "high" ? 12 : job.confidence === "medium" ? 7 : 3;
+  const locationScore = matchesLocation(job, locationMode, location) ? 10 : 0;
+  const workScore = !workType || workType === "all" || matchesWorkType(job, workType) ? 8 : 0;
+  const salaryScore = job.salary ? 3 : 0;
+  const applyScore = /apply|job|career|greenhouse|lever|ashby|jobbank|a16z/i.test(`${job.url} ${job.career_page}`) ? 2 : 0;
+  return Math.round(clamp(roleScore + freshnessScore + sourceScore + locationScore + workScore + salaryScore + applyScore, 0, 100));
+}
+
+function extractKeywords(text = "", query = "", limit = 8) {
+  const queryTokens = new Set(roleTokens(query));
+  const ignored = new Set([
+    ...ROLE_STOP_WORDS,
+    "experience",
+    "team",
+    "work",
+    "using",
+    "build",
+    "building",
+    "strong",
+    "including",
+    "class",
+    "span",
+    "href",
+    "https",
+    "http",
+    "nbsp",
+    "div",
+    "amp",
+    "blank",
+    "font",
+    "style",
+    "text",
+    "size",
+    "weight",
+    "that",
+    "this",
+    "their",
+    "your",
+    "you",
+    "our",
+    "are",
+    "will",
+    "com",
+    "www",
+    "all",
+    "any",
+    "can",
+    "from",
+    "have",
+    "high",
+    "new",
+    "number",
+    "september",
+    "apply",
+    "applyinterested",
+    "account",
+    "favourites",
+    "favorite",
+    "sign",
+    "salary",
+    "location",
+    "hourly",
+    "annually",
+    "talent.com",
+  ]);
+  const counts = new Map();
+  normalizeText(text)
+    .toLowerCase()
+    .split(/[^a-z0-9+#.]+/)
+    .filter((token) =>
+      token.length > 2 &&
+      !ignored.has(token) &&
+      !/^\d+(?:\.\d+)?$/.test(token) &&
+      !/^[a-f0-9]{8,}$/.test(token)
+    )
+    .forEach((token) => counts.set(token, (counts.get(token) || 0) + (queryTokens.has(token) ? 4 : 1)));
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([token]) => token);
+}
+
+function applicationPriority(score) {
+  if (score >= 82) return "Excellent target";
+  if (score >= 68) return "Strong target";
+  if (score >= 52) return "Worth applying";
+  return "Lower priority";
+}
+
+function interviewStrategy(job, query) {
+  const keywords = extractKeywords(`${job.title} ${job.skills} ${job.description}`, query, 5);
+  const actions = [
+    `Mirror the title language: ${job.title}.`,
+    keywords.length ? `Put these keywords high in the resume: ${keywords.join(", ")}.` : "Use the job title and strongest measurable outcomes in the resume summary.",
+    job.posted_age_days !== null && job.posted_age_days <= 1
+      ? "Apply today; this posting is still in the early-response window."
+      : "Apply with a tailored resume before the posting ages out of the freshness window.",
+  ];
+  if (job.company) actions.push(`Add one company-specific sentence for ${job.company}.`);
+  return actions;
+}
+
+function enrichForCandidate(job, query, workType, locationMode, location) {
+  const score = applicationScore(job, query, workType, locationMode, location);
+  return {
+    ...job,
+    application_score: score,
+    application_priority: applicationPriority(score),
+    resume_keywords: extractKeywords(`${job.title} ${job.skills} ${job.description}`, query),
+    interview_strategy: interviewStrategy(job, query),
+  };
+}
+
+function sourceKey(job) {
+  const host = domainFromUrl(job.career_page || job.url);
+  return normalizeText(job.source || job.discovery_source || host || "Unknown source");
+}
+
+function compareOpportunity(a, b) {
+  return (b.application_score || 0) - (a.application_score || 0) ||
+    (b.role_match_score || 0) - (a.role_match_score || 0) ||
+    (parseJobDate(b.posted)?.getTime() || 0) - (parseJobDate(a.posted)?.getTime() || 0);
+}
+
+function diversifyBySource(jobs, limit = jobs.length) {
+  const queues = new Map();
+  jobs.forEach((job) => {
+    const key = sourceKey(job);
+    if (!queues.has(key)) queues.set(key, []);
+    queues.get(key).push(job);
+  });
+  queues.forEach((queue) => queue.sort(compareOpportunity));
+
+  const picked = [];
+  const sourceCounts = new Map();
+  while (picked.length < limit) {
+    let bestKey = "";
+    let bestJob = null;
+    let bestUtility = -Infinity;
+
+    queues.forEach((queue, key) => {
+      const candidate = queue[0];
+      if (!candidate) return;
+      const shownFromSource = sourceCounts.get(key) || 0;
+      const utility = (candidate.application_score || 0) / Math.sqrt(shownFromSource + 1);
+      if (
+        utility > bestUtility ||
+        (utility === bestUtility && compareOpportunity(candidate, bestJob || {}) < 0)
+      ) {
+        bestUtility = utility;
+        bestJob = candidate;
+        bestKey = key;
+      }
+    });
+
+    if (!bestJob) break;
+    queues.get(bestKey).shift();
+    sourceCounts.set(bestKey, (sourceCounts.get(bestKey) || 0) + 1);
+    picked.push(bestJob);
+  }
+
+  return picked;
+}
+
+function discoveryKey(item) {
+  return SEARCH_SOURCES.find((source) => source.id === item.source)?.label || item.discovery_source || item.source || "Open web";
+}
+
+function diversifyDiscoveries(discoveries, limit) {
+  const queues = new Map();
+  discoveries.forEach((item) => {
+    const key = discoveryKey(item);
+    if (!queues.has(key)) queues.set(key, []);
+    queues.get(key).push(item);
+  });
+
+  const picked = [];
+  while (picked.length < limit) {
+    let moved = false;
+    for (const source of SEARCH_SOURCES) {
+      const key = source.label;
+      const next = queues.get(key)?.shift();
+      if (!next) continue;
+      picked.push(next);
+      moved = true;
+      if (picked.length >= limit) break;
+    }
+    for (const [key, queue] of queues) {
+      if (SEARCH_SOURCES.some((source) => source.label === key)) continue;
+      const next = queue.shift();
+      if (!next) continue;
+      picked.push(next);
+      moved = true;
+      if (picked.length >= limit) break;
+    }
+    if (!moved) break;
+  }
+
+  return picked;
 }
 
 function detectRoleFamily(value = "") {
@@ -241,7 +590,8 @@ function similarScore(job, query, family, currentPageUrls) {
   const sourceScore = job.confidence === "high" ? 2 : 0;
   const freshnessScore = Math.max(0, 7 - (Number(job.posted_age_days) || 0));
   const workScore = /remote|hybrid|onsite|on-site|office|distributed|global|worldwide/.test(haystack) ? 1 : 0;
-  return overlap + familyScore + sourceScore + freshnessScore + workScore;
+  const primaryPenalty = isPrimaryRoleMatch(job, query) ? -6 : 0;
+  return overlap + familyScore + sourceScore + freshnessScore + workScore + primaryPenalty;
 }
 
 function getSimilarPostings(allJobs, currentPageJobs, query) {
@@ -271,8 +621,18 @@ function matchesWorkType(job, workType) {
 function matchesLocation(job, locationMode, location) {
   if (locationMode === "worldwide" || !location?.trim()) return true;
   const needle = location.toLowerCase();
-  const combined = `${job.location || ""} ${job.title || ""} ${job.description || ""} ${job.url || ""}`.toLowerCase();
-  return combined.includes(needle) || combined.includes("worldwide") || combined.includes("global");
+  const loc = ` ${normalizeText(job.location || "").toLowerCase()} `;
+  const locIsKnown = loc.trim() && !/^(not specified|worldwide \/ not specified)$/.test(loc.trim());
+  const source = normalizeText(job.source || "").toLowerCase();
+  const combined = `${loc} ${job.title || ""} ${job.description || ""} ${job.url || ""}`.toLowerCase();
+  const aliases = COUNTRY_LOCATION_HINTS[needle] || [needle];
+
+  if (needle === "canada" && source === "job bank canada") return true;
+  if (aliases.some((alias) => loc.includes(alias))) return true;
+  if (/\b(worldwide|global|anywhere)\b/.test(loc)) return true;
+  if (locIsKnown && COUNTRY_EXCLUSION_HINTS.some((country) => loc.includes(country))) return false;
+  if (locIsKnown) return loc.includes(needle);
+  return aliases.some((alias) => combined.includes(alias)) || /\b(worldwide|global|anywhere)\b/.test(combined);
 }
 
 function normalizeJob(job, query, workType, locationMode, location) {
@@ -284,7 +644,7 @@ function normalizeJob(job, query, workType, locationMode, location) {
   return {
     title,
     company,
-    location: loc || (locationMode === "worldwide" ? "Worldwide / not specified" : location),
+    location: loc || (locationMode === "worldwide" ? "Worldwide / not specified" : "Not specified"),
     work_type: inferredType || "not specified",
     salary: normalizeText(job.salary || ""),
     experience: normalizeText(job.experience || ""),
@@ -336,6 +696,7 @@ async function getStoredJobListings({ query, location, locationMode, workType, m
         description: row.raw?.description || "",
         confidence: row.confidence || "high",
       }, query, workType, locationMode, location))
+      .map((job) => ({ ...job, role_match_score: roleRelevanceScore(job, query) }))
       .filter((job) => matchesRole(`${job.title} ${job.description || ""} ${job.url}`, query))
       .filter((job) => matchesWorkType(job, workType))
       .filter((job) => matchesLocation(job, locationMode, location))
@@ -390,16 +751,22 @@ function buildGlobalQueries(query, location, locationMode, workType) {
     { source: "workable", q: `site:apply.workable.com "${query}" ${geo} ${type}` },
     { source: "recruitee", q: `site:*.recruitee.com "${query}" ${geo} careers jobs` },
     { source: "crunchbase", q: `site:crunchbase.com/organization "${query}" ${geo} hiring careers` },
+    { source: "jobbank", q: `site:jobbank.gc.ca/jobsearch "${query}" ${geo} ${type}` },
+    { source: "underdog", q: `site:underdog.io "${query}" ${geo} ${type} startup jobs` },
+    { source: "a16z", q: `site:jobs.a16z.com/jobs "${query}" ${geo} ${type}` },
   ];
 }
 
 function isLikelyCareerUrl(url = "", title = "") {
   const text = `${url} ${title}`.toLowerCase();
-  return /career|jobs|job-|\/job\/|opening|position|greenhouse|lever\.co|ashbyhq|smartrecruiters|workable|recruitee|bamboohr/.test(text);
+  return /career|jobs|job-|\/job\/|opening|position|greenhouse|lever\.co|ashbyhq|smartrecruiters|workable|recruitee|bamboohr|jobbank\.gc\.ca|underdog\.io|jobs\.a16z\.com/.test(text);
 }
 
 function atsSource(url = "") {
   const host = domainFromUrl(url);
+  if (host.endsWith("jobbank.gc.ca")) return "Job Bank Canada";
+  if (host.endsWith("underdog.io")) return "Underdog.io";
+  if (host === "jobs.a16z.com") return "a16z Jobs";
   if (host.includes("greenhouse.io")) return "Greenhouse";
   if (host.includes("lever.co")) return "Lever";
   if (host.includes("ashbyhq.com")) return "Ashby";
@@ -428,6 +795,28 @@ async function fetchJson(url) {
     maxRedirects: 5,
   });
   return res.data;
+}
+
+async function fetchHtml(url, headers = {}) {
+  const requestHeaders = {
+    "User-Agent": BROWSER_UA,
+    Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    ...headers,
+  };
+  try {
+    const res = await fetch(url, { headers: requestHeaders, redirect: "follow" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.text();
+  } catch (fetchError) {
+    const res = await axios.get(url, {
+      headers: requestHeaders,
+      timeout: 18000,
+      maxRedirects: 5,
+    });
+    if (!res.data) throw fetchError;
+    return res.data;
+  }
 }
 
 async function fetchGreenhouseJobs(url) {
@@ -504,6 +893,133 @@ async function fetchSmartRecruitersJobs(url) {
   }));
 }
 
+function splitJobDetails(text = "") {
+  const parts = normalizeText(text).split(/[·•|]/).map((part) => part.trim()).filter(Boolean);
+  const posted = parts.find((part) => /\b(posted|new\b|today|yesterday|ago|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)/i.test(part)) || "";
+  const salary = parts.find((part) => /(\$|usd|cad|hourly|annually|year)/i.test(part)) || "";
+  const location = parts.find((part) => part !== posted && part !== salary && /\b(remote|hybrid|onsite|on site|united|canada|california|new york|london|toronto|vancouver|india|europe|africa|[A-Z]{2})\b/.test(part)) || "";
+  return { location, salary, posted };
+}
+
+function jobBankSearchUrl(query, location = "", pageNum = 1) {
+  const params = new URLSearchParams({
+    searchstring: query,
+    sort: "D",
+  });
+  if (location) params.set("locationstring", location);
+  if (pageNum > 1) params.set("page", String(pageNum));
+  return `https://www.jobbank.gc.ca/jobsearch/jobsearch?${params.toString()}`;
+}
+
+async function fetchJobBankJobs(url, query, location = "") {
+  const targetUrl = url.includes("/jobsearch/jobsearch") ? url : jobBankSearchUrl(query, location);
+  const html = await fetchHtml(targetUrl, { "Accept-Language": "en-CA,en-US;q=0.9,en;q=0.8" });
+  const $ = cheerio.load(html);
+  const jobs = [];
+  const cards = $("article[id^='article-'], .job-posting-summary, li:has(a[href*='/jobsearch/jobposting/'])");
+
+  cards.each((_, card) => {
+    const $card = $(card);
+    const titleEl = $card.is("a")
+      ? $card
+      : $card.find("a[href*='/jobsearch/jobposting/'], a[href*='/jobposting/'], h3 a").first();
+    const title = normalizeText($card.find(".noctitle").first().text() || $card.find("h3, h2").first().text() || titleEl.text());
+    const href = safeUrl(titleEl.attr("href"), "https://www.jobbank.gc.ca");
+    const text = normalizeText((titleEl.length ? titleEl : $card).text());
+    const posted = normalizeText($card.find("time").attr("datetime") || $card.find(".date").first().text() || (text.match(/[A-Z][a-z]+ \d{1,2}, \d{4}|Posted [^$]+?(?= Location| Salary| Job number|$)/)?.[0] || ""));
+    const company = normalizeText(
+      $card.find(".business, [class*='business'], [class*='employer'], [data-employer]").first().text()
+    ) || normalizeText(text.split(/\bLocation\b/i)[0]?.replace(title, "").replace(/\b(New|Remote|Hybrid|On site|Direct Apply|Posted on Job Bank|Job Bank)\b/gi, ""));
+    const loc = normalizeText($card.find(".location, [class*='location']").first().text()).replace(/^Location\s*/i, "") || normalizeText(text.match(/\bLocation\s+(.+?)(?=\s+Salary|\s+Job Bank|\s+Job number|$)/i)?.[1] || "");
+    const salary = normalizeText($card.find(".salary, [class*='salary']").first().text()).replace(/^Salary\s*/i, "") || normalizeText(text.match(/\bSalary\s+(.+?)(?=\s+Job Bank|\s+Job number|$)/i)?.[1] || "");
+    if (!title || !href) return;
+    jobs.push({
+      title,
+      company: company || "Job Bank employer",
+      location: loc,
+      salary,
+      posted,
+      posted_at: posted,
+      url: href,
+      career_page: targetUrl,
+      source: "Job Bank Canada",
+      discovery_source: "Job Bank Canada direct search",
+      description: text,
+      confidence: "high",
+    });
+  });
+
+  return jobs;
+}
+
+async function fetchA16zJobs(url, query) {
+  const targetUrl = url.startsWith("https://jobs.a16z.com/jobs") ? url : "https://jobs.a16z.com/jobs";
+  const html = await fetchHtml(targetUrl);
+  const $ = cheerio.load(html);
+  const jobs = [];
+  const titleLinks = $("a[href*='/jobs/']").filter((_, el) => {
+    const href = $(el).attr("href") || "";
+    const text = normalizeText($(el).text());
+    return text && !/all portfolio jobs|jobs by company|a16z jobs/i.test(text) && /\/jobs\/[^/?#]+/.test(href);
+  });
+
+  titleLinks.each((_, el) => {
+    const $link = $(el);
+    const card = $link.closest("article, li, [class*='job'], [class*='Job'], div").first();
+    const text = normalizeText(card.text());
+    if (!matchesRole(`${$link.text()} ${text}`, query)) return;
+    const { location, salary, posted } = splitJobDetails(text);
+    const company = normalizeText(card.find("a[href*='/companies/']").first().text()) || "a16z portfolio company";
+    const applyUrl = safeUrl(card.find("a").filter((_, a) => /apply/i.test($(a).text())).first().attr("href"), targetUrl);
+    jobs.push({
+      title: normalizeText($link.text()),
+      company,
+      location,
+      salary,
+      posted,
+      posted_at: posted,
+      url: safeUrl($link.attr("href"), targetUrl) || applyUrl,
+      career_page: targetUrl,
+      source: "a16z Jobs",
+      discovery_source: "a16z Jobs direct search",
+      description: text,
+      confidence: "high",
+    });
+  });
+
+  return jobs;
+}
+
+async function fetchUnderdogJobs(url, query) {
+  const targetUrl = url.includes("underdog.io") ? url : "https://underdog.io/startup-job-board";
+  const html = await fetchHtml(targetUrl);
+  const $ = cheerio.load(html);
+  const jobs = [];
+  $("article, li, [class*='job'], [class*='Job']").each((_, card) => {
+    const $card = $(card);
+    const text = normalizeText($card.text());
+    const titleEl = $card.find("a[href]").filter((_, el) => matchesRole($(el).text(), query)).first();
+    const title = normalizeText(titleEl.text());
+    const { location, salary, posted } = splitJobDetails(text);
+    if (!title || !posted || !matchesRole(`${title} ${text}`, query)) return;
+    jobs.push({
+      title,
+      company: "Underdog.io startup",
+      location,
+      salary,
+      posted,
+      posted_at: posted,
+      url: safeUrl(titleEl.attr("href"), targetUrl) || targetUrl,
+      career_page: targetUrl,
+      source: "Underdog.io",
+      discovery_source: "Underdog.io direct search",
+      description: text,
+      confidence: "medium",
+    });
+  });
+  return jobs;
+}
+
 async function fetchDirectCompanyBoard(board) {
   const urlBySource = {
     Greenhouse: `https://boards.greenhouse.io/${board.token}`,
@@ -528,16 +1044,8 @@ async function fetchDirectCompanyBoard(board) {
 }
 
 async function scrapeGenericCareerPage(url, discovery, query) {
-  const res = await axios.get(url, {
-    headers: {
-      "User-Agent": BROWSER_UA,
-      Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
-    },
-    timeout: 18000,
-    maxRedirects: 5,
-  });
-  const $ = cheerio.load(res.data);
+  const html = await fetchHtml(url);
+  const $ = cheerio.load(html);
   const pageTitle = normalizeText($("title").first().text());
   const company = companyFromDomain(domainFromUrl(url));
   const jobs = [];
@@ -616,6 +1124,9 @@ async function scrapeGenericCareerPage(url, discovery, query) {
 async function extractCareerJobs(url, discovery, query) {
   const source = atsSource(url);
   try {
+    if (source === "Job Bank Canada") return await fetchJobBankJobs(url, query);
+    if (source === "Underdog.io") return await fetchUnderdogJobs(url, query);
+    if (source === "a16z Jobs") return await fetchA16zJobs(url, query);
     if (source === "Greenhouse") return await fetchGreenhouseJobs(url);
     if (source === "Lever") return await fetchLeverJobs(url);
     if (source === "Ashby") return await fetchAshbyJobs(url);
@@ -649,7 +1160,7 @@ async function scrapeGlobalCareerPages({ query, location, locationMode, workType
   const pageCount = Math.min(Math.max(Number(discoveryPages) || 1, 1), 3);
   const companyLimit = Math.min(Math.max(Number(maxCompanies) || 20, 5), 60);
   const searches = buildGlobalQueries(query, location, locationMode, workType);
-  const [seedGroups, ...discoveryGroups] = await Promise.all([
+  const [seedGroups, directSourceGroups, ...discoveryGroups] = await Promise.all([
     Promise.all(DIRECT_COMPANY_BOARDS.map(async (board) => {
       try {
         return await fetchDirectCompanyBoard(board);
@@ -658,6 +1169,14 @@ async function scrapeGlobalCareerPages({ query, location, locationMode, workType
         return [];
       }
     })).then((groups) => groups.flat()),
+    Promise.all([
+      fetchJobBankJobs(jobBankSearchUrl(query, locationMode === "country" ? location : ""), query, locationMode === "country" ? location : ""),
+      fetchA16zJobs("https://jobs.a16z.com/jobs", query),
+      fetchUnderdogJobs("https://underdog.io/startup-job-board", query),
+    ].map((promise) => promise.catch((err) => {
+      console.warn("Direct job source scrape failed:", err.message);
+      return [];
+    }))).then((groups) => groups.flat()),
     ...searches.map(async (search) => {
       const results = [];
       for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
@@ -685,17 +1204,18 @@ async function scrapeGlobalCareerPages({ query, location, locationMode, workType
       if (seenUrls.has(key)) return false;
       seenUrls.add(key);
       return true;
-    })
-    .slice(0, companyLimit);
+    });
+  const diversifiedCandidates = diversifyDiscoveries(candidates, companyLimit);
 
   const jobs = [];
-  for (const candidate of candidates) {
+  for (const candidate of diversifiedCandidates) {
     const extracted = await extractCareerJobs(candidate.url, candidate, query);
     jobs.push(...extracted.map((job) => ({ ...job, discovery_source: candidate.discovery_source })));
   }
 
-  const normalized = [...seedGroups, ...jobs]
+  const normalized = [...seedGroups, ...directSourceGroups, ...jobs]
     .map((job) => normalizeJob(job, query, workType, locationMode, location))
+    .map((job) => ({ ...job, role_match_score: roleRelevanceScore(job, query) }))
     .filter((job) => job.title && matchesRole(`${job.title} ${job.description || ""} ${job.url}`, query))
     .filter((job) => matchesWorkType(job, workType))
     .filter((job) => matchesLocation(job, locationMode, location))
@@ -709,7 +1229,10 @@ async function scrapeGlobalCareerPages({ query, location, locationMode, workType
       seen.add(key);
       return true;
     })
-    .sort((a, b) => (parseJobDate(b.posted)?.getTime() || 0) - (parseJobDate(a.posted)?.getTime() || 0));
+    .sort((a, b) =>
+      (b.role_match_score || 0) - (a.role_match_score || 0) ||
+      (parseJobDate(b.posted)?.getTime() || 0) - (parseJobDate(a.posted)?.getTime() || 0)
+    );
 }
 
 async function scrapeNaukri(page, query, location, pageNum) {
@@ -965,13 +1488,23 @@ export async function POST(request) {
         }),
       ]);
       const allFreshJobs = dedupeJobs([...storedJobs, ...liveJobs]).sort(
-        (a, b) => (parseJobDate(b.posted)?.getTime() || 0) - (parseJobDate(a.posted)?.getTime() || 0)
-      );
+        (a, b) =>
+          (b.role_match_score || 0) - (a.role_match_score || 0) ||
+          (parseJobDate(b.posted)?.getTime() || 0) - (parseJobDate(a.posted)?.getTime() || 0)
+      ).map((job) => enrichForCandidate(job, query.trim(), workType, locationMode, location.trim()));
+      const primaryFreshJobs = allFreshJobs.filter((job) => isPrimaryRoleMatch(job, query.trim()));
+      const relatedFreshJobs = allFreshJobs.filter((job) => !isPrimaryRoleMatch(job, query.trim()));
       const maxWindow = MAX_RESULT_PAGES * safePerPage;
-      const total = Math.min(allFreshJobs.length, maxWindow);
+      const diversifiedPrimaryJobs = diversifyBySource(primaryFreshJobs, maxWindow);
+      const total = Math.min(diversifiedPrimaryJobs.length, maxWindow);
       const start = (safeResultPage - 1) * safePerPage;
-      const pageJobs = allFreshJobs.slice(0, maxWindow).slice(start, start + safePerPage);
-      const similarPostings = getSimilarPostings(allFreshJobs.slice(0, maxWindow), pageJobs, query.trim());
+      const pageJobs = diversifiedPrimaryJobs.slice(start, start + safePerPage);
+      const similarPostings = getSimilarPostings(relatedFreshJobs.slice(0, maxWindow), pageJobs, query.trim());
+      const sourceMix = pageJobs.reduce((acc, job) => {
+        const key = sourceKey(job);
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {});
       return NextResponse.json({
         data: pageJobs.map(publicJob),
         similar_postings: similarPostings.map(publicJob),
@@ -990,6 +1523,7 @@ export async function POST(request) {
           storedJobs: storedJobs.length,
           liveJobs: liveJobs.length,
           sources: SEARCH_SOURCES.map((source) => source.label),
+          sourceMix,
           directSeedBoards: DIRECT_COMPANY_BOARDS.length,
           scanned_companies: Math.min(Math.max(Number(maxCompanies) || 20, 5), 60),
         },

@@ -2,6 +2,24 @@ create extension if not exists pgcrypto;
 
 create table if not exists app_users (
   user_key text primary key,
+  email text,
+  display_name text,
+  auth_provider text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table app_users add column if not exists email text;
+alter table app_users add column if not exists display_name text;
+alter table app_users add column if not exists auth_provider text;
+
+create table if not exists auth_accounts (
+  username text primary key,
+  user_key text not null unique references app_users(user_key) on delete cascade,
+  email text,
+  display_name text,
+  password_hash text not null,
+  password_salt text not null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -167,6 +185,11 @@ for each row execute function set_updated_at();
 drop trigger if exists user_preferences_set_updated_at on user_preferences;
 create trigger user_preferences_set_updated_at
 before update on user_preferences
+for each row execute function set_updated_at();
+
+drop trigger if exists auth_accounts_set_updated_at on auth_accounts;
+create trigger auth_accounts_set_updated_at
+before update on auth_accounts
 for each row execute function set_updated_at();
 
 drop trigger if exists scrape_history_set_updated_at on scrape_history;

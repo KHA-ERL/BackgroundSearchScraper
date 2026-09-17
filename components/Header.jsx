@@ -3,6 +3,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "./ThemeProvider";
 import { useLanguage } from "./LanguageProvider";
+import { useAuth } from "./AuthProvider";
 import { LANGUAGES } from "../lib/i18n";
 
 export default function Header({ onMenuToggle }) {
@@ -10,6 +11,7 @@ export default function Header({ onMenuToggle }) {
   const router = useRouter();
   const { dark, toggle: toggleDark } = useTheme();
   const { lang, setLang, t } = useLanguage();
+  const { user, loading: authLoading, logout } = useAuth();
 
   const [notifOpen, setNotifOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
@@ -35,6 +37,17 @@ export default function Header({ onMenuToggle }) {
   }, []);
 
   const currentLang = LANGUAGES.find((l) => l.code === lang) || LANGUAGES[0];
+  const accountLabel = user?.display_name || user?.email || (user?.authenticated ? "Account" : "Sign in");
+  const accountInitial = accountLabel?.trim()?.[0]?.toUpperCase() || "U";
+
+  async function handleAuthClick() {
+    if (user?.authenticated) {
+      await logout();
+      router.refresh();
+      return;
+    }
+    router.push("/dashboard/auth");
+  }
 
   return (
     <header className="sticky top-0 z-10 bg-white dark:bg-bgdark border-b border-gray-200 dark:border-white/10 px-4 md:px-6 py-3 flex items-center justify-between shadow-sm">
@@ -140,13 +153,28 @@ export default function Header({ onMenuToggle }) {
           <i className="ri-settings-3-line text-lg sm:text-xl" />
         </button>
 
+        {/* Account */}
+        <button
+          onClick={handleAuthClick}
+          disabled={authLoading}
+          className={`hidden sm:flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+            user?.authenticated
+              ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-400/10 dark:text-emerald-300 dark:hover:bg-emerald-400/20"
+              : "bg-sky-50 text-sky-700 hover:bg-sky-100 dark:bg-sky-400/10 dark:text-sky-300 dark:hover:bg-sky-400/20"
+          } disabled:opacity-60`}
+          title={user?.authenticated ? "Sign out" : "Sign in"}
+        >
+          <i className={user?.authenticated ? "ri-logout-circle-r-line" : "ri-login-circle-line"} />
+          <span className="max-w-28 truncate">{user?.authenticated ? "Sign out" : "Sign in"}</span>
+        </button>
+
         {/* Profile Avatar → Profile page */}
         <button
-          onClick={() => router.push("/dashboard/profile")}
+          onClick={() => router.push(user?.authenticated ? "/dashboard/profile" : "/dashboard/auth")}
           className="w-8 h-8 rounded-full bg-sky-600 flex items-center justify-center text-white text-sm font-semibold hover:bg-sky-700 transition-colors dark:bg-orange-300 dark:text-stone-950 dark:hover:bg-orange-200"
-          title={t("header.profile")}
+          title={accountLabel || t("header.profile")}
         >
-          U
+          {accountInitial}
         </button>
       </div>
     </header>

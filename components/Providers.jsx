@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { ThemeProvider } from "./ThemeProvider";
 import { LanguageProvider } from "./LanguageProvider";
 import { ToastProvider } from "./ToastProvider";
+import { AuthProvider } from "./AuthProvider";
 
 export default function Providers({ children }) {
   useEffect(() => {
@@ -10,10 +11,12 @@ export default function Providers({ children }) {
   }, []);
 
   return (
-    <ThemeProvider>
-      <LanguageProvider>
-        <ToastProvider>{children}</ToastProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <ToastProvider>{children}</ToastProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }

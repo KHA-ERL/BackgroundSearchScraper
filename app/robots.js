@@ -1,13 +1,19 @@
-const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://bubblescraper.app").replace(/\/$/, "");
+import { SITE_URL } from "../lib/seo/tools";
 
 export default function robots() {
   return {
-    rules: {
-      userAgent: "*",
-      allow: "/",
-      disallow: ["/api/"],
-    },
-    sitemap: `${siteUrl}/sitemap.xml`,
-    host: siteUrl,
+    rules: [
+      {
+        userAgent: "*",
+        allow: ["/", "/dashboard/"],
+        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/"],
+      },
+      {
+        userAgent: "bingbot",
+        allow: ["/", "/dashboard/"],
+        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/"],
+      },
+    ],
+    sitemap: `${SITE_URL}/sitemap.xml`,
   };
 }
