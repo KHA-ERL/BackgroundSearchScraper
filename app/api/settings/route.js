@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
+import { requireAuthenticatedUserKey, rateLimit } from "@/lib/server/security";
 
 const ENV_FILE = path.resolve(process.cwd(), ".env.local");
 
@@ -40,7 +41,10 @@ function writeEnvFile(env) {
   fs.writeFileSync(ENV_FILE, content);
 }
 
-export async function GET() {
+export async function GET(request) {
+  const auth = requireAuthenticatedUserKey(request);
+  if (auth.error) return auth.error;
+
   const file = readEnvFile();
 
   // process.env takes precedence (set by a previous POST this session)
@@ -96,6 +100,12 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  const auth = requireAuthenticatedUserKey(request);
+  if (auth.error) return auth.error;
+
+  const limited = rateLimit(request, { key: "settings", limit: 12, authenticatedLimit: 40, windowMs: 60_000 });
+  if (limited) return limited;
+
   const body = await request.json();
   const file = readEnvFile();
 

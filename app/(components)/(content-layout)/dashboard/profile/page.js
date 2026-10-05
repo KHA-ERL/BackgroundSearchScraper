@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useTheme } from "../../../../../components/ThemeProvider";
 import { useLanguage } from "../../../../../components/LanguageProvider";
@@ -59,11 +60,32 @@ export default function ProfilePage() {
   const [webhookSaved, setWebhookSaved] = useState(false);
   const [webhookTesting, setWebhookTesting] = useState(false);
   const [webhookTestResult, setWebhookTestResult] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
-    fetch("/api/settings/")
-      .then((r) => r.json())
-      .then((d) => {
+    let mounted = true;
+
+    async function loadProfileSettings() {
+      try {
+        const sessionRes = await fetch("/api/auth/session/", { cache: "no-store" });
+        const session = await sessionRes.json();
+        if (!mounted) return;
+
+        setCurrentUser(session);
+        setIsAuthenticated(Boolean(session.authenticated));
+
+        if (!session.authenticated) return;
+
+        const settingsRes = await fetch("/api/settings/", { cache: "no-store" });
+        if (settingsRes.status === 401) {
+          setIsAuthenticated(false);
+          return;
+        }
+        if (!settingsRes.ok) return;
+        const d = await settingsRes.json();
+        if (!mounted) return;
         if (d.dns_mode) setDnsMode(d.dns_mode);
         if (d.bright_data_enabled !== undefined) setBdEnabled(d.bright_data_enabled === true || d.bright_data_enabled === "true");
         if (d.bright_data_proxy) setBdProxy(d.bright_data_proxy);
@@ -79,8 +101,14 @@ export default function ProfilePage() {
         if (d.codex_base_url) setCodexBaseUrl(d.codex_base_url);
         if (d.wa_security_secret_set) setWaSecretSet(true);
         if (d.webhook_url) setWebhookUrl(d.webhook_url);
-      })
-      .catch(() => {});
+      } catch (_) {
+      } finally {
+        if (mounted) setAuthLoading(false);
+      }
+    }
+
+    loadProfileSettings();
+    return () => { mounted = false; };
   }, []);
 
 
@@ -280,6 +308,46 @@ export default function ProfilePage() {
     { label: "Data Exported", value: "0", icon: "ri-download-cloud-line", color: "green" },
   ];
 
+  if (authLoading) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="box">
+          <div className="box-body flex min-h-56 items-center justify-center">
+            <span className="ti-spinner h-8 w-8" aria-label="Loading profile" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="mx-auto max-w-4xl">
+        <div className="box">
+          <div className="box-body text-center">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-orange-100 text-orange-700">
+              <i className="ri-lock-line text-2xl" aria-hidden="true" />
+            </div>
+            <h2 className="mt-5 text-2xl font-bold text-defaulttextcolor dark:text-white">
+              Sign in to manage your profile
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-gray-500 dark:text-gray-400">
+              Guests can test the tools, but profile settings, API keys, webhook settings, saved scrapes, and saved research require a signed-in account.
+            </p>
+            <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link href="/dashboard/auth" className="ti-btn bg-sky-500 text-white hover:bg-sky-600">
+                Sign in or create account
+              </Link>
+              <Link href="/dashboard/home" className="ti-btn border border-gray-200 text-gray-700 hover:bg-gray-50 dark:text-white">
+                Back to tools
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto">
       {/* Profile Header Card */}
@@ -295,7 +363,7 @@ export default function ProfilePage() {
 
             {/* Info */}
             <div className="flex-1 text-center md:text-left">
-              <h2 className="text-2xl font-bold text-defaulttextcolor dark:text-white mb-1">Admin User</h2>
+              <h2 className="text-2xl font-bold text-defaulttextcolor dark:text-white mb-1">{currentUser?.display_name || "Account User"}</h2>
               <p className="text-gray-500 dark:text-gray-400 mb-2">
                 <span className="inline-flex items-center gap-1">
                   <i className="ri-shield-star-line text-sky-500" />
@@ -304,7 +372,7 @@ export default function ProfilePage() {
               </p>
               <p className="text-sm text-gray-400">
                 <i className="ri-mail-line mr-1" />
-                admin@bubblescraper.com
+                {currentUser?.email || currentUser?.user_key || "Signed in"}
               </p>
               <div className="flex gap-2 mt-3 justify-center md:justify-start">
                 <span className="px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-xs font-semibold">Pro Plan</span>
