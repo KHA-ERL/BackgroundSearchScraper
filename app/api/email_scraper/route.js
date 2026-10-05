@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { chromium } from "../_chromium.js";
+import { normalizePublicHttpUrl, rateLimit } from "../../../lib/server/security";
 
 export async function POST(request) {
   let browser;
   try {
+    const limited = rateLimit(request, { key: "email_scraper", limit: 4, authenticatedLimit: 20, windowMs: 60_000 });
+    if (limited) return limited;
     const { urls } = await request.json();
     if (!urls || !Array.isArray(urls) || urls.length === 0)
       return NextResponse.json({ error: "URLs array is required" }, { status: 400 });
@@ -12,9 +15,10 @@ export async function POST(request) {
     const results = [];
 
     for (const rawUrl of urls.slice(0, 30)) {
-      const url = rawUrl.startsWith("http") ? rawUrl : `https://${rawUrl}`;
+      let url;
       let page;
       try {
+        url = await normalizePublicHttpUrl(rawUrl);
         page = await browser.newPage();
         await page.route("**/*", (route) => {
           const rt = route.request().resourceType();
@@ -40,7 +44,7 @@ export async function POST(request) {
         await page.close();
       } catch (e) {
         if (page) await page.close().catch(() => {});
-        results.push({ url, title: "Error", emails: [], count: 0, error: e.message });
+        results.push({ url: url || String(rawUrl || ""), title: "Error", emails: [], count: 0, error: e.message });
       }
     }
 

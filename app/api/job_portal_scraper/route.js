@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { stealthChromium } from "../_stealth.js";
 import { isDatabaseConfigured, supabaseRequest } from "@/lib/server/supabaseRest";
+import { rateLimit } from "@/lib/server/security";
 import axios from "axios";
 import * as cheerio from "cheerio";
 
@@ -15,6 +16,9 @@ const SEARCH_SOURCES = [
   { id: "smartrecruiters", label: "SmartRecruiters" },
   { id: "workable", label: "Workable" },
   { id: "recruitee", label: "Recruitee" },
+  { id: "bamboohr", label: "BambooHR" },
+  { id: "teamtailor", label: "Teamtailor" },
+  { id: "pinpoint", label: "Pinpoint" },
   { id: "crunchbase", label: "Crunchbase discovery" },
   { id: "jobbank", label: "Job Bank Canada" },
   { id: "underdog", label: "Underdog.io" },
@@ -43,6 +47,8 @@ const DIRECT_COMPANY_BOARDS = [
   { source: "Lever", token: "spotify", company: "Spotify" },
 ];
 
+const BIG_TECH_COMPANIES = new Set(DIRECT_COMPANY_BOARDS.map((board) => board.company.toLowerCase()));
+
 const PER_PAGE = 24;
 const MAX_RESULT_PAGES = 15;
 const SIMILAR_PER_PAGE = 12;
@@ -62,12 +68,29 @@ const TRUSTED_DIRECT_SOURCES = new Set([
   "SmartRecruiters",
   "Workable",
   "Recruitee",
+  "BambooHR",
+  "Teamtailor",
+  "Pinpoint",
   "Job Bank Canada",
   "Underdog.io",
   "a16z Jobs",
   "Company JSON-LD",
   "Company career page",
 ]);
+
+const SCAM_PATTERNS = [
+  /\btelegram\b/i,
+  /\bwhatsapp only\b/i,
+  /\bpay.*fee\b/i,
+  /\bregistration fee\b/i,
+  /\btraining fee\b/i,
+  /\beasy money\b/i,
+  /\bwork from phone only\b/i,
+  /\bcrypto\s+(investment|wallet|payment|deposit)\b/i,
+  /\binvestment required\b/i,
+  /\brefundable deposit\b/i,
+  /\bprocessing fee\b/i,
+];
 
 const ROLE_FAMILIES = [
   {
@@ -228,16 +251,6 @@ function isBlockedJobHost(url = "") {
   return BLOCKED_JOB_HOSTS.some((blocked) => host === blocked || host.endsWith(`.${blocked}`));
 }
 
-function passesQualityGate(job, maxAgeDays) {
-  const text = `${job.title || ""} ${job.company || ""} ${job.description || ""} ${job.url || ""}`.toLowerCase();
-  if (!job.title || !job.company || !job.url) return false;
-  if (isBlockedJobHost(job.url) || isBlockedJobHost(job.career_page)) return false;
-  if (!TRUSTED_DIRECT_SOURCES.has(job.source)) return false;
-  if (!isFreshJob(job, maxAgeDays)) return false;
-  if (/\b(telegram|whatsapp only|pay.*fee|registration fee|training fee|easy money|work from phone only)\b/.test(text)) return false;
-  return true;
-}
-
 function safeUrl(value, base) {
   try {
     return new URL(value, base).toString();
@@ -270,6 +283,103 @@ function companyFromDomain(domain = "") {
 
 function companyFromBoard(source, token) {
   return DIRECT_COMPANY_BOARDS.find((board) => board.source === source && board.token === token)?.company || companyFromDomain(token);
+}
+
+function companyType(job) {
+  const company = normalizeText(job.company || "").toLowerCase();
+  const source = normalizeText(job.source || "");
+  const discovery = normalizeText(job.discovery_source || "");
+  const urlHost = domainFromUrl(job.url || job.career_page);
+
+  if (BIG_TECH_COMPANIES.has(company) || /verified company board/i.test(discovery)) return "big_tech";
+  if (/underdog|a16z|yc|startup|wellfound/i.test(`${source} ${discovery} ${urlHost}`)) return "startup";
+  if (/greenhouse|lever|ashby|smartrecruiters|workable|recruitee|bamboohr|teamtailor|pinpoint/i.test(source)) return "ats";
+  if (/job bank|company career|company json-ld/i.test(source)) return "direct_company";
+  return "other";
+}
+
+function matchesCompanyType(job, filter = "all") {
+  if (!filter || filter === "all") return true;
+  if (filter === "startups") return job.company_type !== "big_tech";
+  if (filter === "big_tech") return job.company_type === "big_tech";
+  if (filter === "direct_company") return ["direct_company", "ats", "startup"].includes(job.company_type);
+  if (filter === "other") return !["big_tech", "startup"].includes(job.company_type);
+  return true;
+}
+
+function trustAssessment(job, maxAgeDays) {
+  const reasons = [];
+  const warnings = [];
+  const text = `${job.title || ""} ${job.company || ""} ${job.description || ""} ${job.url || ""} ${job.career_page || ""}`;
+  const source = normalizeText(job.source || "");
+  const urlHost = domainFromUrl(job.url || "");
+  const careerHost = domainFromUrl(job.career_page || job.url || "");
+  const age = daysOld(job.posted_at || job.posted);
+  const fresh = age !== null && age >= 0 && age <= maxAgeDays;
+  const blocked = isBlockedJobHost(job.url) || isBlockedJobHost(job.career_page);
+  const scamHit = SCAM_PATTERNS.find((pattern) => pattern.test(text));
+  let score = 0;
+
+  if (job.title) score += 10;
+  else warnings.push("Missing role title");
+  if (job.company) score += 10;
+  else warnings.push("Missing company name");
+  if (job.url) score += 10;
+  else warnings.push("Missing application URL");
+
+  if (TRUSTED_DIRECT_SOURCES.has(source)) {
+    score += 25;
+    reasons.push(`${source} is a supported direct source`);
+  } else {
+    warnings.push("Source is not on the supported direct-source list");
+  }
+
+  if (/Greenhouse|Lever|Ashby|SmartRecruiters|Workable|Recruitee|BambooHR|Teamtailor|Pinpoint|Job Bank Canada|Underdog\.io|a16z Jobs/.test(source)) {
+    score += 15;
+    reasons.push("Application link is on a recognized job platform");
+  }
+
+  if (/Company JSON-LD|Company career page/.test(source)) {
+    score += 12;
+    reasons.push("Posting was found on a company-controlled career page");
+  }
+
+  if (fresh) {
+    score += 20;
+    reasons.push(`Fresh posting signal within ${maxAgeDays} days`);
+  } else if (age === null && /Greenhouse|Lever|Ashby|SmartRecruiters|Workable|Recruitee|BambooHR|Teamtailor|Pinpoint|Company JSON-LD|Company career page/.test(source)) {
+    score += 5;
+    warnings.push("No clear posting date; verify freshness before applying");
+  } else {
+    warnings.push("Posting is outside the selected freshness window or has no usable date");
+  }
+
+  if (urlHost && careerHost && (urlHost === careerHost || urlHost.endsWith(`.${careerHost}`) || careerHost.endsWith(`.${urlHost}`))) {
+    score += 5;
+    reasons.push("Application URL matches the career source domain");
+  }
+
+  if (blocked) warnings.push("Blocked aggregator host");
+  if (scamHit) warnings.push("Scam-like language detected");
+  if (blocked || scamHit) score -= 60;
+
+  const label = score >= 80 ? "Verified" : score >= 65 ? "Likely legit" : score >= 50 ? "Needs review" : "Rejected";
+  return {
+    trust_score: clamp(Math.round(score), 0, 100),
+    trust_label: label,
+    trust_reasons: reasons.slice(0, 4),
+    trust_warnings: warnings.slice(0, 4),
+    company_type: companyType(job),
+  };
+}
+
+function passesQualityGate(job, maxAgeDays) {
+  const trust = trustAssessment(job, maxAgeDays);
+  if (!job.title || !job.company || !job.url) return false;
+  if (trust.trust_label === "Rejected") return false;
+  if (trust.trust_score < 55) return false;
+  if (trust.trust_warnings?.some((warning) => /blocked aggregator|scam-like/i.test(warning))) return false;
+  return true;
 }
 
 function inferWorkType(text = "") {
@@ -641,7 +751,7 @@ function normalizeJob(job, query, workType, locationMode, location) {
   const loc = normalizeText(job.location || "");
   const combined = `${title} ${company} ${loc} ${job.description || ""} ${job.url || ""}`;
   const inferredType = job.work_type || inferWorkType(combined) || (workType === "physical" ? "physical" : "");
-  return {
+  const normalized = {
     title,
     company,
     location: loc || (locationMode === "worldwide" ? "Worldwide / not specified" : "Not specified"),
@@ -659,6 +769,10 @@ function normalizeJob(job, query, workType, locationMode, location) {
     description: normalizeText(job.description || ""),
     confidence: job.confidence || (matchesRole(combined, query) && parseJobDate(job.posted_at || job.posted) ? "high" : "medium"),
   };
+  return {
+    ...normalized,
+    ...trustAssessment(normalized, 7),
+  };
 }
 
 function dedupeJobs(jobs = []) {
@@ -671,7 +785,7 @@ function dedupeJobs(jobs = []) {
   });
 }
 
-async function getStoredJobListings({ query, location, locationMode, workType, maxAgeDays }) {
+async function getStoredJobListings({ query, location, locationMode, workType, maxAgeDays, companyFilter }) {
   if (!isDatabaseConfigured()) return [];
   const cutoff = encodeURIComponent(new Date(Date.now() - maxAgeDays * 86400000).toISOString());
   try {
@@ -697,9 +811,11 @@ async function getStoredJobListings({ query, location, locationMode, workType, m
         confidence: row.confidence || "high",
       }, query, workType, locationMode, location))
       .map((job) => ({ ...job, role_match_score: roleRelevanceScore(job, query) }))
+      .map((job) => ({ ...job, ...trustAssessment(job, maxAgeDays) }))
       .filter((job) => matchesRole(`${job.title} ${job.description || ""} ${job.url}`, query))
       .filter((job) => matchesWorkType(job, workType))
       .filter((job) => matchesLocation(job, locationMode, location))
+      .filter((job) => matchesCompanyType(job, companyFilter))
       .filter((job) => passesQualityGate(job, maxAgeDays));
   } catch (err) {
     console.warn("Stored job listing read failed; using live crawl only.", err.message);
@@ -750,6 +866,9 @@ function buildGlobalQueries(query, location, locationMode, workType) {
     { source: "smartrecruiters", q: `site:jobs.smartrecruiters.com "${query}" ${geo} ${type}` },
     { source: "workable", q: `site:apply.workable.com "${query}" ${geo} ${type}` },
     { source: "recruitee", q: `site:*.recruitee.com "${query}" ${geo} careers jobs` },
+    { source: "bamboohr", q: `site:*.bamboohr.com/careers "${query}" ${geo} ${type}` },
+    { source: "teamtailor", q: `site:*.teamtailor.com/jobs "${query}" ${geo} ${type}` },
+    { source: "pinpoint", q: `site:*.pinpointhq.com "${query}" ${geo} ${type}` },
     { source: "crunchbase", q: `site:crunchbase.com/organization "${query}" ${geo} hiring careers` },
     { source: "jobbank", q: `site:jobbank.gc.ca/jobsearch "${query}" ${geo} ${type}` },
     { source: "underdog", q: `site:underdog.io "${query}" ${geo} ${type} startup jobs` },
@@ -759,7 +878,7 @@ function buildGlobalQueries(query, location, locationMode, workType) {
 
 function isLikelyCareerUrl(url = "", title = "") {
   const text = `${url} ${title}`.toLowerCase();
-  return /career|jobs|job-|\/job\/|opening|position|greenhouse|lever\.co|ashbyhq|smartrecruiters|workable|recruitee|bamboohr|jobbank\.gc\.ca|underdog\.io|jobs\.a16z\.com/.test(text);
+  return /career|jobs|job-|\/job\/|opening|position|greenhouse|lever\.co|ashbyhq|smartrecruiters|workable|recruitee|bamboohr|teamtailor|pinpointhq|jobbank\.gc\.ca|underdog\.io|jobs\.a16z\.com/.test(text);
 }
 
 function atsSource(url = "") {
@@ -772,6 +891,9 @@ function atsSource(url = "") {
   if (host.includes("ashbyhq.com")) return "Ashby";
   if (host.includes("smartrecruiters.com")) return "SmartRecruiters";
   if (host.includes("workable.com")) return "Workable";
+  if (host.includes("bamboohr.com")) return "BambooHR";
+  if (host.includes("teamtailor.com")) return "Teamtailor";
+  if (host.includes("pinpointhq.com")) return "Pinpoint";
   return "";
 }
 
@@ -1156,19 +1278,22 @@ async function extractCareerJobs(url, discovery, query) {
   }
 }
 
-async function scrapeGlobalCareerPages({ query, location, locationMode, workType, discoveryPages, maxCompanies, maxAgeDays }) {
+async function scrapeGlobalCareerPages({ query, location, locationMode, workType, discoveryPages, maxCompanies, maxAgeDays, companyFilter, sourceMode }) {
   const pageCount = Math.min(Math.max(Number(discoveryPages) || 1, 1), 3);
   const companyLimit = Math.min(Math.max(Number(maxCompanies) || 20, 5), 60);
   const searches = buildGlobalQueries(query, location, locationMode, workType);
+  const includeSeedBoards = companyFilter !== "startups" || sourceMode === "known_boards";
   const [seedGroups, directSourceGroups, ...discoveryGroups] = await Promise.all([
-    Promise.all(DIRECT_COMPANY_BOARDS.map(async (board) => {
-      try {
-        return await fetchDirectCompanyBoard(board);
-      } catch (err) {
-        console.warn(`${board.source} seed failed for ${board.token}:`, err.message);
-        return [];
-      }
-    })).then((groups) => groups.flat()),
+    includeSeedBoards
+      ? Promise.all(DIRECT_COMPANY_BOARDS.map(async (board) => {
+          try {
+            return await fetchDirectCompanyBoard(board);
+          } catch (err) {
+            console.warn(`${board.source} seed failed for ${board.token}:`, err.message);
+            return [];
+          }
+        })).then((groups) => groups.flat())
+      : Promise.resolve([]),
     Promise.all([
       fetchJobBankJobs(jobBankSearchUrl(query, locationMode === "country" ? location : ""), query, locationMode === "country" ? location : ""),
       fetchA16zJobs("https://jobs.a16z.com/jobs", query),
@@ -1216,9 +1341,11 @@ async function scrapeGlobalCareerPages({ query, location, locationMode, workType
   const normalized = [...seedGroups, ...directSourceGroups, ...jobs]
     .map((job) => normalizeJob(job, query, workType, locationMode, location))
     .map((job) => ({ ...job, role_match_score: roleRelevanceScore(job, query) }))
+    .map((job) => ({ ...job, ...trustAssessment(job, maxAgeDays) }))
     .filter((job) => job.title && matchesRole(`${job.title} ${job.description || ""} ${job.url}`, query))
     .filter((job) => matchesWorkType(job, workType))
     .filter((job) => matchesLocation(job, locationMode, location))
+    .filter((job) => matchesCompanyType(job, companyFilter))
     .filter((job) => passesQualityGate(job, maxAgeDays));
 
   const seen = new Set();
@@ -1440,6 +1567,8 @@ async function scrapeLinkedIn(page, query, location, pageNum) {
 export async function POST(request) {
   let browser;
   try {
+    const limited = rateLimit(request, { key: "job_portal_scraper", limit: 5, authenticatedLimit: 30, windowMs: 60_000 });
+    if (limited) return limited;
     const {
       portal = "global_careers",
       query,
@@ -1452,6 +1581,8 @@ export async function POST(request) {
       perPage = PER_PAGE,
       maxAgeDays = 7,
       maxCompanies = 20,
+      companyFilter = "all",
+      sourceMode = "all_trusted",
     } = await request.json();
     if (!query || !query.trim()) {
       return NextResponse.json({ error: "Job title / keywords are required" }, { status: 400 });
@@ -1476,15 +1607,18 @@ export async function POST(request) {
           locationMode,
           workType,
           maxAgeDays: safeMaxAgeDays,
+          companyFilter,
         }),
         scrapeGlobalCareerPages({
-        query: query.trim(),
-        location: location.trim(),
-        locationMode,
-        workType,
-        discoveryPages,
-        maxCompanies,
-        maxAgeDays: safeMaxAgeDays,
+          query: query.trim(),
+          location: location.trim(),
+          locationMode,
+          workType,
+          discoveryPages,
+          maxCompanies,
+          maxAgeDays: safeMaxAgeDays,
+          companyFilter,
+          sourceMode,
         }),
       ]);
       const allFreshJobs = dedupeJobs([...storedJobs, ...liveJobs]).sort(
@@ -1495,11 +1629,16 @@ export async function POST(request) {
       const primaryFreshJobs = allFreshJobs.filter((job) => isPrimaryRoleMatch(job, query.trim()));
       const relatedFreshJobs = allFreshJobs.filter((job) => !isPrimaryRoleMatch(job, query.trim()));
       const maxWindow = MAX_RESULT_PAGES * safePerPage;
-      const diversifiedPrimaryJobs = diversifyBySource(primaryFreshJobs, maxWindow);
-      const total = Math.min(diversifiedPrimaryJobs.length, maxWindow);
+      const mainJobPool = primaryFreshJobs.length
+        ? [...primaryFreshJobs, ...relatedFreshJobs]
+        : allFreshJobs;
+      const diversifiedJobs = diversifyBySource(mainJobPool, maxWindow);
+      const total = Math.min(diversifiedJobs.length, maxWindow);
       const start = (safeResultPage - 1) * safePerPage;
-      const pageJobs = diversifiedPrimaryJobs.slice(start, start + safePerPage);
-      const similarPostings = getSimilarPostings(relatedFreshJobs.slice(0, maxWindow), pageJobs, query.trim());
+      const pageJobs = diversifiedJobs.slice(start, start + safePerPage);
+      const pageUrls = new Set(pageJobs.map((job) => job.url).filter(Boolean));
+      const similarPool = allFreshJobs.filter((job) => !pageUrls.has(job.url));
+      const similarPostings = getSimilarPostings(similarPool.slice(0, maxWindow), pageJobs, query.trim());
       const sourceMix = pageJobs.reduce((acc, job) => {
         const key = sourceKey(job);
         acc[key] = (acc[key] || 0) + 1;
@@ -1514,6 +1653,8 @@ export async function POST(request) {
           location: location.trim(),
           locationMode,
           workType,
+          companyFilter,
+          sourceMode,
           maxAgeDays: safeMaxAgeDays,
           resultPage: safeResultPage,
           perPage: safePerPage,
@@ -1524,7 +1665,8 @@ export async function POST(request) {
           liveJobs: liveJobs.length,
           sources: SEARCH_SOURCES.map((source) => source.label),
           sourceMix,
-          directSeedBoards: DIRECT_COMPANY_BOARDS.length,
+          directSeedBoards: companyFilter !== "startups" || sourceMode === "known_boards" ? DIRECT_COMPANY_BOARDS.length : 0,
+          availableSeedBoards: DIRECT_COMPANY_BOARDS.length,
           scanned_companies: Math.min(Math.max(Number(maxCompanies) || 20, 5), 60),
         },
       });

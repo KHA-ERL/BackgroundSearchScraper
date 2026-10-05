@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
 import { chromium } from "../_chromium.js";
+import { normalizePublicHttpUrl, rateLimit } from "../../../lib/server/security";
 
 export async function POST(request) {
   let browser;
   try {
+    const limited = rateLimit(request, { key: "live_website", limit: 6, authenticatedLimit: 30, windowMs: 60_000 });
+    if (limited) return limited;
     const { urls } = await request.json();
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json({ error: "urls array required" }, { status: 400 });
@@ -14,9 +17,13 @@ export async function POST(request) {
     const results = [];
 
     for (const rawUrl of limitedUrls) {
-      let url = rawUrl.trim();
-      if (!url) continue;
-      if (!/^https?:\/\//i.test(url)) url = "https://" + url;
+      let url;
+      try {
+        url = await normalizePublicHttpUrl(rawUrl);
+      } catch (error) {
+        results.push({ url: String(rawUrl || ""), title: "", meta_description: "", h1s: [], links_count: 0, images_count: 0, status: `blocked: ${error.message}` });
+        continue;
+      }
 
       const context = await browser.newContext({
         userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",

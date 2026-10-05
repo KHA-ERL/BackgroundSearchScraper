@@ -1,69 +1,102 @@
-# BubbleScraper - AI-Powered Hacker CLI Web Scraping Platform with 33 Tools
+# Bubble Scraper
 
-BubbleScraper has been hyper-evolved into a powerful, retro futuristic "Hacker CLI" web scraping and lead generation platform. Built with Next.js, it not only gives you 33 dedicated scraping tools but features a fully autonomous, conversational AI Terminal powered by Mistral. Install it on your own server, execute complex multi-step instructions purely through natural language, and pay nothing per query. Your data stays on your server. No third-party SaaS. No monthly fees.
+Bubble Scraper is a self-hosted web scraping and data intelligence dashboard built with Next.js and React. It helps teams collect public web data, find leads, verify contacts, research jobs, analyze public sources, and export useful datasets from one workspace.
 
-Set up in under 5 minutes. Just run `npm install`, `npm run build`, and `npm start`.
+The app is built around a simple workflow: search a source, scrape records, verify quality, enrich the result, and export or reuse the data.
 
-## What's New: The Agentic AI Auto-Pilot
-* **Conversational Terminal Interface:** Trigger the floating `npm start ai` modal to open a stateful, interactive hacker terminal.
-* **Recursive Tool Chaining:** Feed the AI compound instructions like *"Find 7 London restaurants, get their emails, then find UI jobs in New York"* — the AI will natively pipeline the data between multiple tools entirely in the background.
-* **Auto-Strategy & Suggestions:** If you ask for something a tool cannot natively provide, the AI agent evaluates the limitations and asks clarifying questions instead of blindly executing.
-* **In-Stream Results & Session Caching:** Extracted data tables are streamed seamlessly inline with the conversation log. Accidental page close? The built in cache preserves your entire AI routing session.
-* **In-App Key Management:** Map your Mistral AI API key securely within the user profile settings no need to edit `.env` files manually.
+## Core Features
 
-## What You Can Scrape
-* **Google Maps** - Business names, phone numbers, addresses, ratings, websites, coordinates. *(Upgraded with auto cookie consent bypass for EU/UK).*
-* **Search Engines** - Google, Bing, Yahoo, DuckDuckGo results with URLs, titles, descriptions
-* **Social Media** - Facebook pages, YouTube channels/videos, Instagram profiles, LinkedIn profiles and companies
-* **eCommerce** - Amazon, Flipkart, Myntra, Snapdeal product data and pricing
-* **Emails and Phones** - Extract email addresses and phone numbers from any website or list of URLs
-* **Business Directories** - Justdial, Indiamart, Sulekha, and global business directory listings
-* **Corporate Data** - Company information, job portal listings, GST lookups
-* **Documents and Images** - Extract data from CSV, Excel, PDFs, and images using OCR
-* **Domains** - WHOIS lookups, bulk URL checker, domain verification
+- Public website, image, document, email, and phone scraping.
+- Lead discovery from maps, search engines, directories, and company pages.
+- Email, phone, WhatsApp, URL, domain, and WHOIS verification.
+- Trusted job discovery from company career pages and ATS boards.
+- AI-assisted social analysis, job application drafting, and summaries.
+- Guest testing with sign-in required for saved history, projects, alerts, and profile settings.
+- Backend safeguards for signed sessions, rate limits, SSRF-safe URL scraping, and security headers.
+- SEO/AEO support through sitemap, robots, `llms.txt`, structured data, and IndexNow.
 
-## WhatsApp and Verification Tools
-* **WhatsApp Business Checker** - Verify if phone numbers have WhatsApp accounts
-* **Bulk WhatsApp Sender** - Send messages to multiple WhatsApp numbers
-* **WhatsApp Number Scraper** - Extract WhatsApp numbers from websites
-* **Email Verifier** - Validate email addresses with DNS/MX checks
-* **Phone Verifier** - Validate and identify phone number carriers
-* **Language Translator** - Translate scraped content between languages
+## Tool Areas
 
-## Key Features
-* **33 tools in one dashboard.** One self-hosted workspace for scraping, enrichment, verification, and export workflows.
-* **Self-hosted.** Your server, your data, your rules. No data leaves your infrastructure.
-* **Unlimited scraping.** No per query fees, no rate limits, no credit system.
-* **Hacker CLI Design System.** Aggressive neon green on deep black interfaces with CRT scanline overlays.
-* **Stealth mode.** Built in browser fingerprint randomization to avoid bot detection.
-* **Bright Data proxy support.** Optional residential proxy integration for sites with aggressive bot protection.
-* **Advanced Exports.** Download results in CSV, JSON, TXT, PDF, and DOCX formats from every tool.
-* **Webhook automation.** Auto send results to Zapier, Make (Integromat), n8n, or any HTTP endpoint.
-* **Command palette.** Press Cmd+K / Ctrl+K to instantly jump to any tool.
-* **Run history.** Previous scrape results are saved locally for quick access.
-* **Built with Next.js 14.** Modern React-based architecture. Fast, responsive, mobile friendly.
-* **Playwright-powered.** Real Chromium browser sessions for accurate scraping. No headless detection.
+- **Lead generation:** Google Maps, global directories, business directories, email scraping, phone scraping, WhatsApp number scraping.
+- **Website data:** search engine scraping, live website scraping, website data extraction, document scraping, image scraping.
+- **Verification:** email verifier, phone verifier, WhatsApp checker, WhatsApp verifier, URL checker, domain verifier, WHOIS lookup.
+- **Jobs and research:** direct career page search, trusted ATS discovery, company-type filters, corporate scraper, B2C data.
+- **Social and ads:** social media scraping, social background analysis, Facebook Ad Library research.
+- **Ecommerce:** ecommerce, Myntra, and Snapdeal scraping workflows.
 
-## Requirements
-* Node.js 18 or higher
-* npm 9 or higher
-* 1 GB RAM minimum (2 GB recommended)
-* Works on Linux, macOS, and Windows
+## Trusted Job Discovery
 
-## What You Get
-* Full source code (Next.js / React)
-* 33 scraping and lead generation tools
-* Fully integrated Agentic AI Interface
-* Complete HTML documentation
-* Dedicated support via contact@ourcribhub.com
+The job portal is designed to find legitimate roles without favoring only large tech companies. It supports:
 
-## Quick Setup
-1. `npm install`
-2. `npx playwright install chromium`
-3. `npm run build`
-4. `npm start`
+- Broad trusted discovery across startups, small companies, recruiters, midsize teams, and large companies.
+- Trust labels such as `Verified`, `Likely legit`, and `Needs review`.
+- Trust reasons and warnings for each job result.
+- Company mix filters: all trusted, startups and smaller employers, or big tech.
+- Embedded source logic: all trusted blends broad discovery with known verified boards; startups and smaller employers hide big tech; big tech focuses on known verified company boards.
 
-Open `http://localhost:3000` and start scraping. That's it.
+The hard-coded big-tech boards are no longer a separate source-mode button. They are folded into the company mix logic so users only choose the type of companies they want to see.
 
-## Support
-Need help? Contact us at contact@ourcribhub.com. We respond within 24 hours on business days.
+## Tech Stack
+
+- Next.js 14
+- React 18
+- Tailwind CSS
+- Playwright and Cheerio
+- Supabase for optional persistence
+- Firebase for optional authentication
+- Mistral and Claude for optional AI features
+
+## Quick Start
+
+```bash
+npm install
+npx playwright install chromium
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+For production:
+
+```bash
+npm run build
+npm start
+```
+
+## Configuration
+
+Copy the example environment file and fill only the services you need:
+
+```bash
+cp .env.local.example .env.local
+```
+
+Common optional values:
+
+- `NEXT_PUBLIC_SITE_URL` for canonical URLs, sitemap, robots, and AEO metadata.
+- `MISTRAL_API_KEY` and `CLAUDE_API_KEY` for AI features.
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for saved preferences, alerts, and records.
+- `SESSION_COOKIE_SECRET` for signed HttpOnly app session cookies.
+- `NEXT_PUBLIC_FIREBASE_*` for authentication.
+- `BING_SITE_VERIFICATION` and `INDEXNOW_KEY` for Bing Webmaster Tools and IndexNow.
+
+## Security Model
+
+- Guests can test scraper features with stricter limits.
+- Sign-in is required to save scrape history, projects, job alerts, research, and profile settings.
+- User data is scoped by the authenticated session, not by client-supplied user IDs.
+- URL-based scrapers block localhost, private IPs, link-local addresses, and internal network targets.
+- Security headers and per-route rate limits are enabled for production hardening.
+
+## Scripts
+
+```bash
+npm run dev      # Start local development
+npm run build    # Create a production build
+npm start        # Run the production server
+npm run lint     # Run Next.js lint checks
+```
+
+## Responsible Use
+
+Bubble Scraper works with public web data and source-backed workflows. Review scraped results before using them for outreach, hiring, legal, financial, safety, or other high-impact decisions.

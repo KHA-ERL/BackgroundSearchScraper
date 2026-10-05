@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { SITE_NAME, SITE_URL, absoluteUrl, seoTools, toolCategories } from "../lib/seo/tools";
+import Image from "next/image";
+import { SITE_NAME, SITE_URL, absoluteUrl, seoTools } from "../lib/seo/tools";
 
 export const metadata = {
   title: "Bubble Scraper | AI-Ready Web Scraping, Lead Data, and Verification Tools",
@@ -81,145 +82,93 @@ const structuredData = {
 
 export default function RootPage() {
   return (
-    <main className="min-h-screen bg-[#f8fafc] text-slate-950">
+    <main className="min-h-screen overflow-hidden bg-[#f6f7f2] text-slate-950">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
       />
 
-      <section className="border-b border-slate-200 bg-white">
-        <div className="mx-auto flex min-h-[92vh] max-w-7xl flex-col justify-between px-5 py-6 sm:px-8 lg:px-10">
+      <section className="relative min-h-screen bg-[url('/assets/img/landing/1.jpg')] bg-cover bg-center">
+        <div className="absolute inset-0 bg-[#f6f7f2]/90" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_22%,rgba(249,115,22,0.22),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(15,23,42,0.12),transparent_30%),linear-gradient(135deg,rgba(255,255,255,0.8),rgba(255,247,237,0.45))]" />
+
+        <div className="relative mx-auto flex min-h-screen max-w-7xl flex-col px-5 py-6 sm:px-8 lg:px-10">
           <nav className="flex items-center justify-between gap-4" aria-label="Primary">
-            <Link href="/" className="text-base font-semibold text-slate-950">
+            <Link href="/" className="text-base font-bold tracking-normal text-slate-950">
               Bubble Scraper
             </Link>
             <Link
               href="/dashboard/home"
-              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800"
+              className="rounded-md bg-slate-950 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700"
             >
               Open app
             </Link>
           </nav>
 
-          <div className="grid gap-10 py-10 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-end">
-            <div>
-              <p className="mb-4 text-sm font-semibold uppercase tracking-normal text-orange-700">
-                AI-ready web scraping and data intelligence
-              </p>
-              <h1 className="max-w-4xl text-4xl font-bold tracking-normal text-slate-950 sm:text-5xl lg:text-6xl">
-                Bubble Scraper answers web data, lead generation, verification, and source research needs from one dashboard.
+          <div className="flex flex-1 items-center py-14">
+            <div className="max-w-3xl">
+              <div className="mb-7 inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/70 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm backdrop-blur">
+                <span className="h-2 w-2 rounded-full bg-orange-600" />
+                AI-ready data intelligence
+              </div>
+
+              <h1 className="max-w-4xl text-5xl font-bold tracking-normal text-slate-950 sm:text-6xl lg:text-7xl">
+                Turn public web data into useful answers.
               </h1>
-              <p className="mt-6 max-w-3xl text-lg leading-8 text-slate-700">
-                Use Bubble Scraper to extract public website data, collect search and directory leads, verify emails and phone numbers, check WhatsApp contacts, analyze public social URLs, and search direct company career pages.
+
+              <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-700 sm:text-xl">
+                Bubble Scraper helps teams discover, verify, and organize public web data for leads, research, websites, contacts, and trusted job discovery from one clean workspace.
               </p>
-              <div className="mt-8 flex flex-wrap gap-3">
+
+              <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                 <Link
-                  href="/dashboard/search-engine-scraper"
-                  className="rounded-md bg-orange-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-700"
+                  href="/dashboard/home"
+                  className="inline-flex items-center justify-center rounded-md bg-orange-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-orange-600/20 transition hover:bg-orange-700"
                 >
-                  Search scraping
+                  Open app
                 </Link>
                 <Link
-                  href="/dashboard/email-verifier"
-                  className="rounded-md border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-950 transition hover:border-slate-950"
+                  href="/more-info"
+                  className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white/70 px-6 py-3 text-sm font-bold text-slate-950 shadow-sm backdrop-blur transition hover:border-slate-950 hover:bg-white"
                 >
-                  Verify data
+                  More information
                 </Link>
               </div>
+
+              <p className="mt-8 text-sm font-semibold text-slate-600">
+                Contact us:{" "}
+                <a className="text-slate-950 underline decoration-orange-500 underline-offset-4" href="mailto:contact@ourcribhub.com">
+                  contact@ourcribhub.com
+                </a>
+              </p>
             </div>
-
-            <aside className="border border-slate-200 bg-slate-50 p-5">
-              <h2 className="text-base font-semibold text-slate-950">Direct answers</h2>
-              <dl className="mt-4 space-y-4">
-                <div>
-                  <dt className="text-sm font-semibold text-slate-900">What is Bubble Scraper?</dt>
-                  <dd className="mt-1 text-sm leading-6 text-slate-700">
-                    Bubble Scraper is a browser-based data intelligence app for scraping, verifying, enriching, exporting, and analyzing public web data.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-semibold text-slate-900">Who uses it?</dt>
-                  <dd className="mt-1 text-sm leading-6 text-slate-700">
-                    Teams that need lead generation, website extraction, source research, job discovery, contact verification, and public social or ad intelligence workflows.
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-sm font-semibold text-slate-900">What can it export?</dt>
-                  <dd className="mt-1 text-sm leading-6 text-slate-700">
-                    Scraped and verified records can be organized for cleaner CSV-style research, prospecting, analysis, and outreach workflows.
-                  </dd>
-                </div>
-              </dl>
-            </aside>
           </div>
 
-          <div className="grid gap-3 border-t border-slate-200 pt-5 text-sm text-slate-600 sm:grid-cols-3">
-            <p>Search engines: Bing, Google, Yahoo, DuckDuckGo workflows</p>
-            <p>Data types: websites, emails, phones, images, documents, domains</p>
-            <p>Use cases: leads, verification, social context, jobs, ad research</p>
+          <div className="pb-6">
+            <div className="grid max-w-2xl grid-cols-3 gap-3" aria-hidden="true">
+              <Image
+                src="/assets/iconfonts/dashboard-icon/bing.png"
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-lg border border-white/80 bg-white/70 p-2 shadow-sm backdrop-blur"
+              />
+              <Image
+                src="/assets/iconfonts/dashboard-icon/verify.png"
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-lg border border-white/80 bg-white/70 p-2 shadow-sm backdrop-blur"
+              />
+              <Image
+                src="/assets/iconfonts/dashboard-icon/website.png"
+                alt=""
+                width={48}
+                height={48}
+                className="h-12 w-12 rounded-lg border border-white/80 bg-white/70 p-2 shadow-sm backdrop-blur"
+              />
+            </div>
           </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
-        <h2 className="text-2xl font-bold text-slate-950">What Bubble Scraper can help with</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {toolCategories.map((category) => (
-            <article key={category.name} className="border border-slate-200 bg-white p-5">
-              <h3 className="text-base font-semibold text-slate-950">{category.name}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-700">{category.summary}</p>
-            </article>
-          ))}
-        </div>
-      </section>
-
-      <section className="border-y border-slate-200 bg-white">
-        <div className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
-          <h2 className="text-2xl font-bold text-slate-950">Feature index for search and AI answers</h2>
-          <div className="mt-6 grid gap-4 md:grid-cols-2">
-            {seoTools.map((tool) => (
-              <article key={tool.path} className="border border-slate-200 p-5">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <h3 className="text-base font-semibold text-slate-950">
-                    <Link href={tool.path} className="hover:text-orange-700">
-                      {tool.name}
-                    </Link>
-                  </h3>
-                  <span className="rounded-sm bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
-                    {tool.category}
-                  </span>
-                </div>
-                <p className="mt-3 text-sm leading-6 text-slate-700">{tool.description}</p>
-                <p className="mt-3 text-xs leading-5 text-slate-500">
-                  Matches searches for: {tool.answers.join(", ")}.
-                </p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-5 py-14 sm:px-8 lg:px-10">
-        <h2 className="text-2xl font-bold text-slate-950">How Bubble Scraper supports AI search visibility</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          <article className="border border-slate-200 bg-white p-5">
-            <h3 className="text-base font-semibold text-slate-950">Crawlable answers</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              Public pages use visible text, normal links, metadata, and schema so Bing and answer engines can understand the product without relying only on client-side app screens.
-            </p>
-          </article>
-          <article className="border border-slate-200 bg-white p-5">
-            <h3 className="text-base font-semibold text-slate-950">Source-backed positioning</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              The app is described as a tool for public web discovery, verification, enrichment, and human-reviewed analysis rather than a source of unsupported automated decisions.
-            </p>
-          </article>
-          <article className="border border-slate-200 bg-white p-5">
-            <h3 className="text-base font-semibold text-slate-950">Bing discovery signals</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-700">
-              Sitemap, robots, structured data, llms.txt, and IndexNow endpoints help Bing find canonical URLs and refresh changed content faster.
-            </p>
-          </article>
         </div>
       </section>
     </main>

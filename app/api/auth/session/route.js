@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-import { isDatabaseConfigured, supabaseRequest, upsertUser } from "@/lib/server/supabaseRest";
-
-const COOKIE = "bs_user_key";
-const SESSION_COOKIE_AGE = 60 * 60 * 24 * 365;
+import { auditLog, isDatabaseConfigured, supabaseRequest, upsertUser } from "@/lib/server/supabaseRest";
+import {
+  clearSessionCookie,
+  getSessionUserKey,
+  isAuthenticatedUserKey,
+  rateLimit,
+  setSessionCookie,
+} from "@/lib/server/security";
 
 function normalizeUsername(value = "") {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9_.@-]/g, "").slice(0, 80);
@@ -63,7 +67,7 @@ async function verifyFirebaseToken(idToken) {
 }
 
 async function migrateAnonymousPreferences(fromUserKey, toUserKey) {
-  if (!isDatabaseConfigured() || !fromUserKey || !toUserKey || fromUserKey === toUserKey || fromUserKey.startsWith("auth:")) return;
+  if (!isDatabaseConfigured() || !fromUserKey || !toUserKey || fromUserKey === toUserKey || isAuthenticatedUserKey(fromUserKey)) return;
   try {
     const rows = await supabaseRequest("user_preferences", {
       query: `?user_key=eq.${encodeURIComponent(fromUserKey)}&select=key,value`,
@@ -89,19 +93,9 @@ function publicUser(userKey, extra = {}) {
   };
 }
 
-function setSessionCookie(response, userKey) {
-  response.cookies.set(COOKIE, userKey, {
-    httpOnly: false,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/",
-    maxAge: SESSION_COOKIE_AGE,
-  });
-}
-
 export async function GET(request) {
-  const userKey = request.cookies.get(COOKIE)?.value || "";
-  if (isDatabaseConfigured() && userKey?.startsWith("auth:")) {
+  const userKey = getSessionUserKey(request);
+  if (isDatabaseConfigured() && isAuthenticatedUserKey(userKey)) {
     try {
       const rows = await supabaseRequest("app_users", {
         query: `?user_key=eq.${encodeURIComponent(userKey)}&select=user_key,email,display_name,auth_provider&limit=1`,
@@ -121,10 +115,12 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const limited = rateLimit(request, { key: "auth_session", limit: 8, authenticatedLimit: 12, windowMs: 60_000 });
+    if (limited) return limited;
     const body = await request.json();
     const action = String(body.action || "login").toLowerCase();
     const provider = String(body.provider || "password").toLowerCase();
-    const previousUserKey = request.cookies.get(COOKIE)?.value || "";
+    const previousUserKey = getSessionUserKey(request);
 
     if (provider === "firebase") {
       const payload = await verifyFirebaseToken(body.idToken);
@@ -134,6 +130,7 @@ export async function POST(request) {
       if (isDatabaseConfigured()) {
         await upsertUser(userKey, { email, displayName, authProvider: "google" });
         await migrateAnonymousPreferences(previousUserKey, userKey);
+        await auditLog({ userKey, action: "login", resource: "auth", metadata: { provider: "google" } }).catch(() => {});
       }
       const res = NextResponse.json(publicUser(userKey, { email, display_name: displayName, auth_provider: "google" }));
       setSessionCookie(res, userKey);
@@ -169,6 +166,7 @@ export async function POST(request) {
         prefer: "resolution=merge-duplicates,return=representation",
       });
       await migrateAnonymousPreferences(previousUserKey, userKey);
+      await auditLog({ userKey, action: "register", resource: "auth", metadata: { provider: "password" } }).catch(() => {});
       const res = NextResponse.json(publicUser(userKey, { email, display_name: displayName, auth_provider: "password" }));
       setSessionCookie(res, userKey);
       return res;
@@ -185,6 +183,7 @@ export async function POST(request) {
     }
     await upsertUser(account.user_key, { email: account.email, displayName: account.display_name, authProvider: "password" });
     await migrateAnonymousPreferences(previousUserKey, account.user_key);
+    await auditLog({ userKey: account.user_key, action: "login", resource: "auth", metadata: { provider: "password" } }).catch(() => {});
     const res = NextResponse.json(publicUser(account.user_key, {
       email: account.email,
       display_name: account.display_name,
@@ -197,8 +196,12 @@ export async function POST(request) {
   }
 }
 
-export async function DELETE() {
+export async function DELETE(request) {
+  const userKey = getSessionUserKey(request);
+  if (isAuthenticatedUserKey(userKey)) {
+    await auditLog({ userKey, action: "logout", resource: "auth" }).catch(() => {});
+  }
   const res = NextResponse.json(publicUser("anonymous"));
-  res.cookies.delete(COOKIE);
+  clearSessionCookie(res);
   return res;
 }

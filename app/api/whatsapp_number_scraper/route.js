@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { chromium } from "../_chromium.js";
+import { normalizePublicHttpUrl, rateLimit } from "../../../lib/server/security";
 
 /**
  * Extract WhatsApp numbers from a page using multiple strategies:
@@ -127,19 +128,26 @@ async function extractWhatsAppNumbers(page) {
 export async function POST(request) {
   let browser;
   try {
+    const limited = rateLimit(request, { key: "whatsapp_number_scraper", limit: 4, authenticatedLimit: 20, windowMs: 60_000 });
+    if (limited) return limited;
     const { urls } = await request.json();
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json({ error: "At least one URL is required" }, { status: 400 });
     }
 
-    const validUrls = urls
-      .map((u) => (u || "").trim())
-      .filter((u) => u.startsWith("http://") || u.startsWith("https://"))
-      .slice(0, 20);
+    const validUrls = [];
+    const blockedUrls = [];
+    for (const rawUrl of urls.slice(0, 20)) {
+      try {
+        validUrls.push(await normalizePublicHttpUrl(rawUrl));
+      } catch (error) {
+        blockedUrls.push({ url: String(rawUrl || ""), error: error.message });
+      }
+    }
 
     if (validUrls.length === 0) {
       return NextResponse.json(
-        { error: "No valid URLs provided. URLs must start with http:// or https://" },
+        { error: "No valid public URLs provided.", blocked: blockedUrls },
         { status: 400 }
       );
     }
@@ -152,6 +160,7 @@ export async function POST(request) {
     });
 
     const results = [];
+    results.push(...blockedUrls.map((item) => ({ url: item.url, numbers: [], count: 0, error: item.error })));
 
     for (const url of validUrls) {
       const page = await context.newPage();

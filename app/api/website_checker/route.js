@@ -1,18 +1,31 @@
 import { NextResponse } from "next/server";
 import axios from "axios";
+import { normalizePublicHttpUrl, rateLimit } from "../../../lib/server/security";
 
 export async function POST(request) {
   try {
+    const limited = rateLimit(request, { key: "website_checker", limit: 8, authenticatedLimit: 40, windowMs: 60_000 });
+    if (limited) return limited;
     const { urls } = await request.json();
     if (!urls || !Array.isArray(urls) || urls.length === 0) {
       return NextResponse.json({ error: "urls array required" }, { status: 400 });
     }
 
-    const limitedUrls = urls.slice(0, 50).map((u) => {
-      u = u.trim();
-      if (!/^https?:\/\//i.test(u)) u = "https://" + u;
-      return u;
-    });
+    const limitedUrls = [];
+    const blocked = [];
+    for (const rawUrl of urls.slice(0, 50)) {
+      try {
+        limitedUrls.push(await normalizePublicHttpUrl(rawUrl));
+      } catch (error) {
+        blocked.push({
+          url: String(rawUrl || ""),
+          status_code: "blocked",
+          status_text: error.message,
+          response_time: 0,
+          redirect_url: "",
+        });
+      }
+    }
 
     const checkUrl = async (url) => {
       const start = Date.now();
@@ -51,7 +64,7 @@ export async function POST(request) {
       }
     };
 
-    const results = await Promise.all(limitedUrls.map(checkUrl));
+    const results = [...blocked, ...(await Promise.all(limitedUrls.map(checkUrl)))];
     return NextResponse.json({ data: results });
   } catch (err) {
     console.error("Website checker error:", err);

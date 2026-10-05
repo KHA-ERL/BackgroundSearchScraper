@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
 import { chromium } from "../_chromium.js";
+import { normalizePublicHttpUrl, rateLimit } from "../../../lib/server/security";
 
 export async function POST(request) {
   let browser;
   try {
+    const limited = rateLimit(request, { key: "image_scraper", limit: 6, authenticatedLimit: 30, windowMs: 60_000 });
+    if (limited) return limited;
     const { url } = await request.json();
     if (!url) return NextResponse.json({ error: "url required" }, { status: 400 });
 
-    let targetUrl = url.trim();
-    if (!/^https?:\/\//i.test(targetUrl)) targetUrl = "https://" + targetUrl;
+    const targetUrl = await normalizePublicHttpUrl(url);
 
     browser = await chromium.launch({ headless: true });
     const page = await browser.newPage();

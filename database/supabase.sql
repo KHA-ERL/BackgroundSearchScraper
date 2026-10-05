@@ -40,6 +40,15 @@ create table if not exists scrape_history (
   primary key (user_key, api_path)
 );
 
+create table if not exists projects (
+  id uuid primary key default gen_random_uuid(),
+  user_key text not null references app_users(user_key) on delete cascade,
+  name text not null,
+  description text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists scrape_runs (
   id uuid primary key default gen_random_uuid(),
   user_key text not null references app_users(user_key) on delete cascade,
@@ -47,6 +56,24 @@ create table if not exists scrape_runs (
   api_path text,
   status text not null default 'success',
   row_count integer not null default 0,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  user_key text references app_users(user_key) on delete set null,
+  action text not null,
+  resource text,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists api_usage_events (
+  id uuid primary key default gen_random_uuid(),
+  user_key text references app_users(user_key) on delete set null,
+  route text not null,
+  status integer,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
@@ -151,6 +178,15 @@ create table if not exists job_crawl_runs (
 create index if not exists scrape_runs_user_created_idx
   on scrape_runs(user_key, created_at desc);
 
+create index if not exists projects_user_created_idx
+  on projects(user_key, created_at desc);
+
+create index if not exists audit_logs_user_created_idx
+  on audit_logs(user_key, created_at desc);
+
+create index if not exists api_usage_events_user_created_idx
+  on api_usage_events(user_key, created_at desc);
+
 create index if not exists scrape_cache_expiry_idx
   on scrape_cache(namespace, expires_at);
 
@@ -195,6 +231,11 @@ for each row execute function set_updated_at();
 drop trigger if exists scrape_history_set_updated_at on scrape_history;
 create trigger scrape_history_set_updated_at
 before update on scrape_history
+for each row execute function set_updated_at();
+
+drop trigger if exists projects_set_updated_at on projects;
+create trigger projects_set_updated_at
+before update on projects
 for each row execute function set_updated_at();
 
 drop trigger if exists scrape_cache_set_updated_at on scrape_cache;

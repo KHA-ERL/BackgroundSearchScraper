@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getUserKey, isDatabaseConfigured, supabaseRequest, upsertUser } from "@/lib/server/supabaseRest";
+import { authRequiredResponse, isAuthenticatedUserKey } from "@/lib/server/security";
 
 export async function GET(request) {
   if (!isDatabaseConfigured()) {
@@ -8,6 +9,7 @@ export async function GET(request) {
 
   try {
     const userKey = getUserKey(request);
+    if (!isAuthenticatedUserKey(userKey)) return authRequiredResponse("Sign in to view saved job alerts.");
     await upsertUser(userKey);
     const rows = await supabaseRequest("job_alerts", {
       query: `?user_key=eq.${encodeURIComponent(userKey)}&select=*&order=created_at.desc`,
@@ -25,6 +27,7 @@ export async function POST(request) {
 
   try {
     const userKey = getUserKey(request);
+    if (!isAuthenticatedUserKey(userKey)) return authRequiredResponse("Sign in to save job alerts.");
     const body = await request.json();
     const query = String(body.query || "").trim();
     if (!query) {
@@ -60,6 +63,7 @@ export async function PATCH(request) {
 
   try {
     const userKey = getUserKey(request);
+    if (!isAuthenticatedUserKey(userKey)) return authRequiredResponse("Sign in to update job alerts.");
     const body = await request.json();
     if (!body.id) return NextResponse.json({ error: "Alert id is required." }, { status: 400 });
     const rows = await supabaseRequest("job_alerts", {

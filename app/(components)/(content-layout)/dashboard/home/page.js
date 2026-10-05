@@ -172,6 +172,10 @@ const tools = [
   { title: "Translator",         href: "/dashboard/language-translator",        icon: "ri-translate-2",          color: "bg-sky-50 text-sky-600",       category: "Verify", status: "green", badge: "v14" },
 ];
 
+const alphabeticalTools = [...tools].sort((a, b) =>
+  a.title.localeCompare(b.title, undefined, { sensitivity: "base" })
+);
+
 const CATEGORIES = ["All", "Lead Gen", "Social", "eCommerce", "Corporate", "Website", "Domain", "WhatsApp", "Verify"];
 
 const BADGE_COLORS = {
@@ -512,7 +516,9 @@ export default function HomePage() {
     return () => { mounted = false; clearInterval(id); };
   }, []);
 
-  const categoryFiltered = activeCat === "All" ? tools : tools.filter((tool) => tool.category === activeCat);
+  const categoryFiltered = activeCat === "All"
+    ? alphabeticalTools
+    : alphabeticalTools.filter((tool) => tool.category === activeCat);
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const filtered = normalizedQuery
     ? categoryFiltered.filter((tool) =>
@@ -621,7 +627,7 @@ export default function HomePage() {
               </div>
             </aside>
           </div>
-          <ToolMarquee tools={tools} />
+          <ToolMarquee tools={alphabeticalTools} />
         </section>
 
         <section className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-label="Usage summary">

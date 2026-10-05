@@ -13,19 +13,17 @@ const WORK_TYPES = [
   { id: "physical", label: "Physical", icon: "ri-building-4-line" },
 ];
 
-const SOURCE_CHIPS = [
-  "Open web / SEO",
-  "Verified company boards",
-  "Greenhouse",
-  "Lever",
-  "Ashby",
-  "SmartRecruiters",
-  "Workable",
-  "Recruitee",
-  "Crunchbase discovery",
-  "Job Bank Canada",
-  "Underdog.io",
-  "a16z Jobs",
+const COMPANY_FILTERS = [
+  { id: "all", label: "All trusted", icon: "ri-shield-check-line" },
+  { id: "startups", label: "Startups & others", icon: "ri-rocket-line" },
+  { id: "big_tech", label: "Big tech", icon: "ri-building-4-line" },
+];
+
+const ROLE_PRESETS = [
+  { label: "Frontend", query: "Frontend Engineer", workType: "remote", icon: "ri-layout-4-line" },
+  { label: "Data", query: "Data Analyst", workType: "remote", icon: "ri-bar-chart-box-line" },
+  { label: "Product", query: "Product Manager", workType: "hybrid", icon: "ri-road-map-line" },
+  { label: "Design", query: "Product Designer", workType: "remote", icon: "ri-palette-line" },
 ];
 
 const JOB_PROFILE_PREF_KEY = "job_application_profile";
@@ -33,6 +31,13 @@ const JOB_PROFILE_LOCAL_KEY = "bs_job_application_profile";
 
 function uniqueCount(rows, key) {
   return new Set(rows.map((row) => row[key]).filter(Boolean)).size;
+}
+
+function visibleForCompanyMix(row, filter) {
+  if (!filter || filter === "all") return true;
+  if (filter === "big_tech") return row.company_type === "big_tech";
+  if (filter === "startups") return row.company_type !== "big_tech";
+  return true;
 }
 
 export default function JobPortalScraperPage() {
@@ -45,8 +50,11 @@ export default function JobPortalScraperPage() {
   const [discoveryPages, setDiscoveryPages] = useState(1);
   const [maxCompanies, setMaxCompanies] = useState(60);
   const [freshnessDays, setFreshnessDays] = useState(7);
+  const [companyFilter, setCompanyFilter] = useState("all");
   const [rows, setRows] = useState([]);
+  const [allRows, setAllRows] = useState([]);
   const [similarRows, setSimilarRows] = useState([]);
+  const [allSimilarRows, setAllSimilarRows] = useState([]);
   const [meta, setMeta] = useState(null);
   const [loading, setLoading] = useState(false);
   const [alertSaving, setAlertSaving] = useState(false);
@@ -63,9 +71,12 @@ export default function JobPortalScraperPage() {
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileSavedAt, setProfileSavedAt] = useState(null);
   const [profileStorageMode, setProfileStorageMode] = useState("local");
+  const [showProfileWorkspace, setShowProfileWorkspace] = useState(false);
+  const [showAdvancedSearch, setShowAdvancedSearch] = useState(false);
 
   const activePortal = PORTALS.find((p) => p.id === portal) || PORTALS[0];
   const isGlobal = portal === "global_careers";
+  const hasProfileEvidence = Boolean(cvText.trim() || profileLinks.trim());
 
   useEffect(() => {
     let cancelled = false;
@@ -87,6 +98,7 @@ export default function JobPortalScraperPage() {
           setLocation(saved.location || "");
           setWorkType(saved.workType || "remote");
           setFreshnessDays(saved.freshnessDays || 7);
+          setCompanyFilter(saved.companyFilter || "all");
         }
       } catch {
         setProfileStorageMode("local");
@@ -103,6 +115,7 @@ export default function JobPortalScraperPage() {
             setLocation(saved.location || "");
             setWorkType(saved.workType || "remote");
             setFreshnessDays(saved.freshnessDays || 7);
+            setCompanyFilter(saved.companyFilter || "all");
           }
         } catch {}
       } finally {
@@ -128,6 +141,7 @@ export default function JobPortalScraperPage() {
       location,
       workType,
       freshnessDays,
+      companyFilter,
       updatedAt: new Date().toISOString(),
     };
     localStorage.setItem(JOB_PROFILE_LOCAL_KEY, JSON.stringify(value));
@@ -142,9 +156,14 @@ export default function JobPortalScraperPage() {
       } catch {}
     }, 700);
     return () => clearTimeout(saveTimer);
-  }, [profileLoaded, profileName, targetTitle, cvText, profileLinks, aiProvider, query, locationMode, location, workType, freshnessDays]);
+  }, [profileLoaded, profileName, targetTitle, cvText, profileLinks, aiProvider, query, locationMode, location, workType, freshnessDays, companyFilter]);
 
-  async function run(pageOverride = resultPage) {
+  useEffect(() => {
+    setRows(allRows.filter((row) => visibleForCompanyMix(row, companyFilter)));
+    setSimilarRows(allSimilarRows.filter((row) => visibleForCompanyMix(row, companyFilter)));
+  }, [allRows, allSimilarRows, companyFilter]);
+
+  async function run(pageOverride = resultPage, filterOverride = companyFilter, preserveCurrentRows = false) {
     if (!query.trim()) {
       setError("Enter a job role or position.");
       return;
@@ -154,8 +173,12 @@ export default function JobPortalScraperPage() {
       return;
     }
     setError("");
-    setRows([]);
-    setSimilarRows([]);
+    if (!preserveCurrentRows) {
+      setRows([]);
+      setAllRows([]);
+      setSimilarRows([]);
+      setAllSimilarRows([]);
+    }
     setMeta(null);
     setAlertMessage("");
     setLoading(true);
@@ -171,9 +194,11 @@ export default function JobPortalScraperPage() {
         maxAgeDays: Math.min(Math.max(Number(freshnessDays) || 7, 1), 7),
         discoveryPages: Math.min(Math.max(Number(discoveryPages) || 1, 1), 3),
         maxCompanies: Math.min(Math.max(Number(maxCompanies) || 20, 5), 60),
+        companyFilter: filterOverride,
+        sourceMode: filterOverride === "big_tech" ? "known_boards" : "all_trusted",
       });
-      setRows(res.data.data || []);
-      setSimilarRows(res.data.similar_postings || []);
+      setAllRows(res.data.data || []);
+      setAllSimilarRows(res.data.similar_postings || []);
       setMeta(res.data.meta || null);
       setResultPage(Math.min(Math.max(Number(pageOverride) || 1, 1), 15));
     } catch (e) {
@@ -217,6 +242,7 @@ export default function JobPortalScraperPage() {
 
   async function prepareApplication(job) {
     if (!cvText.trim() && !profileLinks.trim()) {
+      setShowProfileWorkspace(true);
       setError("Add CV text, upload a text-readable CV, or add portfolio/social links before preparing an application.");
       return;
     }
@@ -267,6 +293,9 @@ export default function JobPortalScraperPage() {
     setLocation("");
     setWorkType("remote");
     setFreshnessDays(7);
+    setCompanyFilter("all");
+    setAllRows([]);
+    setAllSimilarRows([]);
     setApplicationDraft(null);
     setApplicationJob(null);
     localStorage.removeItem(JOB_PROFILE_LOCAL_KEY);
@@ -278,6 +307,13 @@ export default function JobPortalScraperPage() {
       });
     } catch {}
     setProfileSavedAt(null);
+  }
+
+  function applyPreset(preset) {
+    setQuery(preset.query);
+    setWorkType(preset.workType);
+    setResultPage(1);
+    setError("");
   }
 
   function exportCSV() {
@@ -293,6 +329,11 @@ export default function JobPortalScraperPage() {
       "posted",
       "posted_age_days",
       "freshness_verified",
+      "trust_score",
+      "trust_label",
+      "trust_reasons",
+      "trust_warnings",
+      "company_type",
       "application_score",
       "application_priority",
       "resume_keywords",
@@ -349,18 +390,28 @@ export default function JobPortalScraperPage() {
           <div className="rounded-[1.15rem] border border-stone-200 bg-[#1f1814] p-4 text-white dark:border-[#00FF41]/35 dark:bg-[#020502]">
             <div className="mb-3 flex items-center justify-between">
               <div>
-                <p className="text-xs font-black uppercase text-orange-200 dark:text-[#00FF41]/70">Discovery sources</p>
-                <h2 className="text-lg font-black dark:text-[#00FF41]">Open intelligence map</h2>
+                <p className="text-xs font-black uppercase text-orange-200 dark:text-[#00FF41]/70">Simple workflow</p>
+                <h2 className="text-lg font-black dark:text-[#00FF41]">Start with one search</h2>
               </div>
               <span className="flex h-10 w-10 items-center justify-center rounded-full bg-orange-400 text-stone-950 dark:bg-[#00FF41]">
-                <i className="ri-route-line text-xl" />
+                <i className="ri-compass-3-line text-xl" />
               </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              {SOURCE_CHIPS.map((source) => (
-                <span key={source} className="rounded-full border border-white/10 bg-white/[0.08] px-2.5 py-1 text-[11px] font-bold text-orange-50 dark:border-[#00FF41]/25 dark:text-[#00FF41]/80">
-                  {source}
-                </span>
+            <div className="space-y-3">
+              {[
+                ["1", "Enter a role", "Use a normal title like Frontend Engineer or Product Designer."],
+                ["2", "Pick work style", "Remote, hybrid, physical, or any location style."],
+                ["3", "Search and review", "Open the source job, then optionally prepare an application."],
+              ].map(([step, title, copy]) => (
+                <div key={step} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.08] p-3">
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-orange-300 text-xs font-black text-stone-950 dark:bg-[#00FF41]">
+                    {step}
+                  </span>
+                  <div>
+                    <p className="text-sm font-black text-white dark:text-[#00FF41]">{title}</p>
+                    <p className="mt-0.5 text-xs leading-5 text-orange-50/75 dark:text-[#00FF41]/70">{copy}</p>
+                  </div>
+                </div>
               ))}
             </div>
           </div>
@@ -385,16 +436,18 @@ export default function JobPortalScraperPage() {
         <section className="rounded-[1.25rem] border border-stone-200 bg-white p-4 shadow-[0_18px_45px_rgba(104,62,30,0.08)] lg:p-5 dark:border-[#00FF41]/25 dark:bg-black">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="text-xs font-black uppercase text-orange-700 dark:text-[#00FF41]/60">Candidate profile</p>
-              <h2 className="text-lg font-black text-stone-950 dark:text-[#00FF41]">Application workspace</h2>
+              <p className="text-xs font-black uppercase text-orange-700 dark:text-[#00FF41]/60">Optional</p>
+              <h2 className="text-lg font-black text-stone-950 dark:text-[#00FF41]">Application helper</h2>
               <p className="mt-1 text-xs font-bold text-stone-500 dark:text-[#00FF41]/55">
                 {profileLoaded
-                  ? `${profileSavedAt ? `Saved ${profileSavedAt.toLocaleTimeString()}` : "Saved automatically"} (${profileStorageMode === "cloud" ? "per-user cloud profile" : "this browser"})`
+                  ? hasProfileEvidence
+                    ? `${profileSavedAt ? `Saved ${profileSavedAt.toLocaleTimeString()}` : "Saved automatically"} (${profileStorageMode === "cloud" ? "per-user cloud profile" : "this browser"})`
+                    : "Add this later when you want tailored application drafts."
                   : "Loading saved profile..."}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {["mistral", "claude", "codex", "template"].map((provider) => (
+              {showProfileWorkspace && ["mistral", "claude", "codex", "template"].map((provider) => (
                 <button
                   key={provider}
                   type="button"
@@ -410,7 +463,16 @@ export default function JobPortalScraperPage() {
               ))}
               <button
                 type="button"
+                onClick={() => setShowProfileWorkspace((open) => !open)}
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-3 text-xs font-black text-orange-800 transition hover:bg-orange-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-[#00FF41]/30 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
+              >
+                <i className={showProfileWorkspace ? "ri-subtract-line" : "ri-add-line"} />
+                {showProfileWorkspace ? "Hide" : "Set up"}
+              </button>
+              <button
+                type="button"
                 onClick={clearSavedProfile}
+                disabled={!hasProfileEvidence && !profileName && !targetTitle}
                 className="min-h-9 rounded-full border border-rose-200 px-3 text-xs font-black text-rose-700 transition hover:bg-rose-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 dark:border-rose-400/40 dark:text-rose-300"
               >
                 Clear
@@ -418,6 +480,26 @@ export default function JobPortalScraperPage() {
             </div>
           </div>
 
+          {!showProfileWorkspace ? (
+            <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+              <div className="rounded-2xl border border-orange-100 bg-[#fff8ef] p-4 dark:border-[#00FF41]/20 dark:bg-[#00FF41]/5">
+                <p className="text-sm font-black text-stone-900 dark:text-[#00FF41]">
+                  Search works without a CV.
+                </p>
+                <p className="mt-1 text-sm leading-6 text-stone-600 dark:text-[#00FF41]/65">
+                  Use the role search first. Open this helper only when you want Bubble Scraper to prepare a tailored application draft from your CV text and links.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowProfileWorkspace(true)}
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-stone-200 bg-white px-4 text-sm font-black text-stone-800 transition hover:border-orange-300 hover:text-orange-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41]"
+              >
+                <i className="ri-file-edit-line" />
+                Add CV details
+              </button>
+            </div>
+          ) : (
           <div className="grid grid-cols-12 gap-4">
             <div className="col-span-12 md:col-span-6 xl:col-span-3">
               <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">Name</label>
@@ -465,10 +547,34 @@ export default function JobPortalScraperPage() {
               />
             </div>
           </div>
+          )}
         </section>
 
         <section className="rounded-[1.25rem] border border-orange-100 bg-white p-4 shadow-[0_18px_45px_rgba(104,62,30,0.08)] lg:p-5 dark:border-[#00FF41]/25 dark:bg-black">
-          <div className="mb-5 flex flex-wrap gap-2" role="tablist" aria-label="Job search source">
+          <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-black uppercase text-orange-700 dark:text-[#00FF41]/60">Start here</p>
+              <h2 className="text-lg font-black text-stone-950 dark:text-[#00FF41]">Search fresh direct-source jobs</h2>
+              <p className="mt-1 text-sm leading-6 text-stone-600 dark:text-[#00FF41]/65">
+                Enter a role, choose the work style, then search. Leave advanced options alone unless you need deeper crawling.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {ROLE_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  onClick={() => applyPreset(preset)}
+                  className="inline-flex min-h-9 items-center gap-2 rounded-full border border-orange-100 bg-[#fff8ef] px-3 text-xs font-black text-stone-700 transition hover:border-orange-300 hover:text-orange-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-[#00FF41]/25 dark:bg-[#00FF41]/5 dark:text-[#00FF41]/75"
+                >
+                  <i className={preset.icon} />
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={`${showAdvancedSearch ? "mb-5 flex flex-wrap gap-2" : "hidden"}`} role="tablist" aria-label="Job search source">
             {PORTALS.map((p) => (
               <button
                 key={p.id}
@@ -570,7 +676,7 @@ export default function JobPortalScraperPage() {
               />
             </div>
 
-            <div className="col-span-12 lg:col-span-2">
+            <div className={`${showAdvancedSearch ? "col-span-12 lg:col-span-2" : "hidden"}`}>
               <label className="mb-1 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">
                 Paging
               </label>
@@ -631,11 +737,58 @@ export default function JobPortalScraperPage() {
             </div>
           </div>
 
+          <div className="mt-4">
+            <div>
+              <label className="mb-2 block text-sm font-bold text-stone-700 dark:text-[#00FF41]/75">
+                Company mix
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {COMPANY_FILTERS.map((filter) => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => {
+                      setCompanyFilter(filter.id);
+                      setResultPage(1);
+                      if (query.trim() && meta) run(1, filter.id, true);
+                    }}
+                    className={`inline-flex min-h-10 items-center gap-2 rounded-full border px-3 text-xs font-black transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${
+                      companyFilter === filter.id
+                        ? "border-orange-500 bg-orange-100 text-orange-800 dark:border-[#00FF41] dark:bg-[#00FF41] dark:text-black"
+                        : "border-stone-200 bg-white text-stone-600 hover:border-orange-200 hover:text-orange-800 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41]/70"
+                    }`}
+                  >
+                    <i className={filter.icon} />
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-xs font-semibold text-stone-500 dark:text-[#00FF41]/55">
+                All trusted blends broad discovery with known verified boards. Startups & others hides big tech. Big tech focuses on known verified company boards.
+              </p>
+            </div>
+          </div>
+
+          <div className="mt-4 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedSearch((open) => !open)}
+              className="inline-flex min-h-9 items-center gap-2 rounded-full border border-stone-200 bg-white px-3 text-xs font-black text-stone-600 transition hover:border-orange-200 hover:text-orange-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-[#00FF41]/25 dark:bg-black dark:text-[#00FF41]/70"
+            >
+              <i className={showAdvancedSearch ? "ri-equalizer-line" : "ri-settings-3-line"} />
+              {showAdvancedSearch ? "Hide advanced options" : "Advanced options"}
+            </button>
+            <span className="text-xs font-bold text-stone-400 dark:text-[#00FF41]/45">
+              Fresh jobs only: {freshnessDays} day{Number(freshnessDays) === 1 ? "" : "s"}
+              {meta?.directSeedBoards ? `; known seed boards active: ${meta.directSeedBoards}` : ""}
+            </span>
+          </div>
+
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => run(1)}
-              disabled={loading}
+              disabled={loading || !query.trim()}
               className="bs-primary-action inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border px-5 text-sm font-black shadow-[0_14px_30px_rgba(41,30,20,0.20)] transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
             >
               {loading ? (
@@ -672,6 +825,8 @@ export default function JobPortalScraperPage() {
             {meta?.sources && (
               <span className="text-xs font-semibold text-stone-500 dark:text-[#00FF41]/55">
                 Page {meta.resultPage} of {meta.totalPages}; showing {meta.perPage} per page from {meta.total} fresh direct-source matches.
+                {meta.companyFilter && ` Company mix: ${meta.companyFilter.replace(/_/g, " ")}.`}
+                {meta.sourceMode === "known_boards" && ` Known board seeds active (${meta.directSeedBoards}).`}
                 {meta.sourceMix && ` Mix: ${Object.entries(meta.sourceMix).map(([source, count]) => `${source} ${count}`).join(", ")}.`}
               </span>
             )}
@@ -697,7 +852,7 @@ export default function JobPortalScraperPage() {
               <table className="w-full min-w-[1320px] text-sm">
                 <thead className="bg-[#fff8ef] dark:bg-[#00FF41]/5">
                   <tr>
-                    {["#", "Role", "Company", "Location", "Type", "Fit", "Source", "Confidence", "Posted", "Action"].map((h) => (
+                    {["#", "Role", "Company", "Location", "Type", "Fit", "Source", "Trust", "Posted", "Action"].map((h) => (
                       <th key={h} className="px-4 py-3 text-left text-xs font-black uppercase text-stone-500 dark:text-[#00FF41]/60">
                         {h}
                       </th>
@@ -712,7 +867,14 @@ export default function JobPortalScraperPage() {
                         <p className="text-sm font-black text-stone-900 dark:text-[#00FF41]">{r.title || "-"}</p>
                         {r.resume_keywords?.length > 0 && <p className="mt-1 truncate text-xs text-stone-500 dark:text-[#00FF41]/50">{r.resume_keywords.slice(0, 5).join(", ")}</p>}
                       </td>
-                      <td className="px-4 py-3 text-xs font-bold text-stone-700 dark:text-[#00FF41]/80">{r.company || "-"}</td>
+                      <td className="px-4 py-3 text-xs font-bold text-stone-700 dark:text-[#00FF41]/80">
+                        <p>{r.company || "-"}</p>
+                        {r.company_type && (
+                          <p className="mt-1 text-[11px] font-black uppercase text-stone-400 dark:text-[#00FF41]/45">
+                            {r.company_type.replace(/_/g, " ")}
+                          </p>
+                        )}
+                      </td>
                       <td className="max-w-[210px] px-4 py-3 text-xs text-stone-500 dark:text-[#00FF41]/60">{r.location || "-"}</td>
                       <td className="px-4 py-3">
                         <span className="rounded-full bg-orange-100 px-2 py-1 text-[11px] font-black text-orange-800 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
@@ -729,9 +891,21 @@ export default function JobPortalScraperPage() {
                         <p className="mt-0.5 text-[11px] text-stone-400 dark:text-[#00FF41]/45">{r.discovery_source || ""}</p>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="rounded-full bg-emerald-50 px-2 py-1 text-[11px] font-black text-emerald-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]">
-                          {r.confidence || "medium"}
+                        <span
+                          title={[...(r.trust_reasons || []), ...(r.trust_warnings || [])].join(" | ")}
+                          className={`rounded-full px-2 py-1 text-[11px] font-black ${
+                            r.trust_label === "Verified"
+                              ? "bg-emerald-50 text-emerald-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
+                              : r.trust_label === "Likely legit"
+                                ? "bg-sky-50 text-sky-700 dark:bg-[#00FF41]/10 dark:text-[#00FF41]"
+                                : "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                          }`}
+                        >
+                          {r.trust_label || r.confidence || "review"} {r.trust_score !== undefined ? `${r.trust_score}%` : ""}
                         </span>
+                        {r.trust_reasons?.[0] && (
+                          <p className="mt-1 line-clamp-2 text-[11px] text-stone-500 dark:text-[#00FF41]/50">{r.trust_reasons[0]}</p>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-xs text-stone-500 dark:text-[#00FF41]/60">{r.posted || "-"}</td>
                       <td className="px-4 py-3">
@@ -765,8 +939,23 @@ export default function JobPortalScraperPage() {
                   <i className={`${loading ? "ri-loader-4-line animate-spin" : "ri-briefcase-search-line"} text-2xl`} />
                 </span>
                 <p className="text-sm font-bold text-stone-500 dark:text-[#00FF41]/60">
-                  {loading ? `Searching ${activePortal.label}...` : "No jobs to display yet"}
+                  {loading ? `Searching ${activePortal.label}...` : "Enter a role above, or choose a preset, to find fresh direct-source jobs."}
                 </p>
+                {!loading && (
+                  <div className="mt-4 flex flex-wrap justify-center gap-2">
+                    {ROLE_PRESETS.slice(0, 3).map((preset) => (
+                      <button
+                        key={`empty-${preset.label}`}
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        className="inline-flex min-h-9 items-center gap-2 rounded-full border border-orange-100 bg-[#fff8ef] px-3 text-xs font-black text-orange-800 transition hover:border-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 dark:border-[#00FF41]/25 dark:bg-[#00FF41]/5 dark:text-[#00FF41]"
+                      >
+                        <i className={preset.icon} />
+                        {preset.query}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
