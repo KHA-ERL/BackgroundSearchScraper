@@ -10,6 +10,7 @@ const nav = [
     key: "cat.dashboard",
     items: [
       { title: "Home", href: "/dashboard/home", icon: "ri-home-2-line" },
+      { title: "Admin Console", href: "/dashboard/admin", icon: "ri-shield-user-line" },
     ],
   },
   {

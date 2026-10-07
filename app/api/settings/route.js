@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { requireAuthenticatedUserKey, rateLimit } from "@/lib/server/security";
+import { authRequiredResponse, requireAuthenticatedUserKey, rateLimit } from "@/lib/server/security";
 
 const ENV_FILE = path.resolve(process.cwd(), ".env.local");
 
@@ -42,8 +42,8 @@ function writeEnvFile(env) {
 }
 
 export async function GET(request) {
-  const auth = requireAuthenticatedUserKey(request);
-  if (auth.error) return auth.error;
+  const userKey = requireAuthenticatedUserKey(request);
+  if (!userKey) return authRequiredResponse("Sign in to view profile settings.");
 
   const file = readEnvFile();
 
@@ -100,8 +100,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  const auth = requireAuthenticatedUserKey(request);
-  if (auth.error) return auth.error;
+  const userKey = requireAuthenticatedUserKey(request);
+  if (!userKey) return authRequiredResponse("Sign in to update profile settings.");
 
   const limited = rateLimit(request, { key: "settings", limit: 12, authenticatedLimit: 40, windowMs: 60_000 });
   if (limited) return limited;

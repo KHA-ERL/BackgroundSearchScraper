@@ -22,6 +22,10 @@ const PAGE_META = {
     title: "Settings and API Keys",
     description: "Manage scraper credentials, AI providers, model preferences, proxies, webhooks, and application settings.",
   },
+  "/dashboard/admin": {
+    title: "Admin Observability Console",
+    description: "Private admin dashboard for users, tool usage, security signals, job activity, and platform events.",
+  },
 };
 
 function titleFromPath(pathname = "") {

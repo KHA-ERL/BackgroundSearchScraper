@@ -6,12 +6,12 @@ export default function robots() {
       {
         userAgent: "*",
         allow: ["/", "/dashboard/"],
-        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/"],
+        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/", "/dashboard/admin/"],
       },
       {
         userAgent: "bingbot",
         allow: ["/", "/dashboard/"],
-        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/"],
+        disallow: ["/api/", "/dashboard/auth/", "/dashboard/profile/", "/dashboard/admin/"],
       },
     ],
     sitemap: `${SITE_URL}/sitemap.xml`,

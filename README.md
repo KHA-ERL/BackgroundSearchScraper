@@ -12,6 +12,7 @@ The app is built around a simple workflow: search a source, scrape records, veri
 - Trusted job discovery from company career pages and ATS boards.
 - AI-assisted social analysis, job application drafting, and summaries.
 - Guest testing with sign-in required for saved history, projects, alerts, and profile settings.
+- Private admin observability for users, tool usage, recent events, job activity, and security signals.
 - Backend safeguards for signed sessions, rate limits, SSRF-safe URL scraping, and security headers.
 - SEO/AEO support through sitemap, robots, `llms.txt`, structured data, and IndexNow.
 
@@ -77,8 +78,16 @@ Common optional values:
 - `MISTRAL_API_KEY` and `CLAUDE_API_KEY` for AI features.
 - `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` for saved preferences, alerts, and records.
 - `SESSION_COOKIE_SECRET` for signed HttpOnly app session cookies.
+- `ADMIN_EMAILS` for access to `/dashboard/admin`.
 - `NEXT_PUBLIC_FIREBASE_*` for authentication.
 - `BING_SITE_VERIFICATION` and `INDEXNOW_KEY` for Bing Webmaster Tools and IndexNow.
+
+## Admin Dashboard
+
+Set `ADMIN_EMAILS` to the signed-in owner/admin email addresses that should access `/dashboard/admin`.
+For username accounts without an email, use `ADMIN_USER_KEYS`, such as `auth:local:yourusername`.
+
+The admin dashboard shows core MVP observability: users, runs today, failed runs, saved work, top tools, recent activity, job crawler status, and recent security signals.
 
 ## Security Model
 
