@@ -1,7 +1,12 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { isFirebaseConfigured, signInWithGoogle, signOutFromGoogle } from "@/lib/client/firebaseAuth";
+import {
+  completeGoogleRedirectSignIn,
+  isFirebaseConfigured,
+  signInWithGoogle,
+  signOutFromGoogle,
+} from "@/lib/client/firebaseAuth";
 
 const AuthContext = createContext(null);
 
@@ -30,6 +35,32 @@ export function AuthProvider({ children }) {
     refresh().catch(() => setLoading(false));
   }, [refresh]);
 
+  const loginWithFirebaseToken = useCallback(async (idToken) => {
+    const data = await fetch("/api/auth/session/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: "firebase", idToken }),
+    }).then(readJson);
+    setUser(data);
+    return data;
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function finishRedirectLogin() {
+      if (!isFirebaseConfigured()) return;
+      try {
+        const idToken = await completeGoogleRedirectSignIn();
+        if (!idToken || cancelled) return;
+        await loginWithFirebaseToken(idToken);
+      } catch {}
+    }
+    finishRedirectLogin();
+    return () => {
+      cancelled = true;
+    };
+  }, [loginWithFirebaseToken]);
+
   const loginPassword = useCallback(async ({ username, password }) => {
     const data = await fetch("/api/auth/session/", {
       method: "POST",
@@ -52,14 +83,8 @@ export function AuthProvider({ children }) {
 
   const loginGoogle = useCallback(async () => {
     const idToken = await signInWithGoogle();
-    const data = await fetch("/api/auth/session/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ provider: "firebase", idToken }),
-    }).then(readJson);
-    setUser(data);
-    return data;
-  }, []);
+    return loginWithFirebaseToken(idToken);
+  }, [loginWithFirebaseToken]);
 
   const logout = useCallback(async () => {
     await fetch("/api/auth/session/", { method: "DELETE" }).then(readJson);
