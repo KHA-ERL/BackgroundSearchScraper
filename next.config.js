@@ -52,6 +52,7 @@ const nextConfig = {
           "img-src 'self' data: blob: https:",
           "font-src 'self' data: https:",
           "connect-src 'self' https:",
+          "frame-src 'self' https://*.firebaseapp.com https://*.google.com https://accounts.google.com",
           "frame-ancestors 'none'",
           "base-uri 'self'",
           "form-action 'self'",
